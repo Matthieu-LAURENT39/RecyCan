@@ -569,17 +569,27 @@ function switchView(view) {
   const btnB = document.getElementById('btn-buy')
   const btnR = document.getElementById('btn-return')
 
-  if (view === 'return') {
-    btnR.classList.add('bg-white', 'text-green-800')
-    btnR.classList.remove('border-2', 'border-white', 'text-white')
-    btnB.classList.add('border-2', 'border-white', 'text-white')
-    btnB.classList.remove('bg-white', 'text-green-800')
-  } else {
-    btnB.classList.add('bg-white', 'text-green-800')
-    btnB.classList.remove('border-2', 'border-white', 'text-white')
-    btnR.classList.add('border-2', 'border-white', 'text-white')
-    btnR.classList.remove('bg-white', 'text-green-800')
+  const setBadgeState = (button, isActive) => {
+    button.classList.remove(
+      'bg-white',
+      'text-green-800',
+      'border-2',
+      'border-white',
+      'text-white',
+      'hover:bg-green-50',
+      'hover:bg-green-700'
+    )
+
+    if (isActive) {
+      button.classList.add('bg-white', 'text-green-800', 'hover:bg-green-50')
+      return
+    }
+
+    button.classList.add('border-2', 'border-white', 'text-white', 'hover:bg-green-700')
   }
+
+  setBadgeState(btnB, view !== 'return')
+  setBadgeState(btnR, view === 'return')
 
   if (!isWalletConnected()) {
     ['buy', 'return', 'receipt'].forEach(v => {
@@ -602,15 +612,11 @@ function switchView(view) {
   location.hash = view
 
   if (view === 'buy') {
-    btnB.classList.add('bg-white', 'text-green-800')
-    btnB.classList.remove('border-2', 'border-white', 'text-white')
-    btnR.classList.add('border-2', 'border-white', 'text-white')
-    btnR.classList.remove('bg-white', 'text-green-800')
+    setBadgeState(btnB, true)
+    setBadgeState(btnR, false)
   } else if (view === 'return') {
-    btnR.classList.add('bg-white', 'text-green-800')
-    btnR.classList.remove('border-2', 'border-white', 'text-white')
-    btnB.classList.add('border-2', 'border-white', 'text-white')
-    btnB.classList.remove('bg-white', 'text-green-800')
+    setBadgeState(btnR, true)
+    setBadgeState(btnB, false)
     void checkReturnOperatorAuthorization()
   }
 }
