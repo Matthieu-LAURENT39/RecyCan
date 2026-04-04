@@ -115,11 +115,6 @@ async function connectWallet() {
     const short = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`
     setWalletStatus(`Connected: ${short} · ${CONTRACT_ADDRESS.slice(0, 6)}...${CONTRACT_ADDRESS.slice(-4)}`)
 
-    const returnInput = document.getElementById('return-address')
-    if (!returnInput.value) {
-      returnInput.value = connectedAddress
-    }
-
     const addr = getContractAddress()
     contract = new ethers.Contract(addr, CONTRACT_ABI, signer)
     await refreshAllChainData()
@@ -332,12 +327,12 @@ async function claimDeposit() {
     const c = await ensureContract()
     const canOperate = await checkReturnOperatorAuthorization()
     if (!canOperate) {
-      throw new Error('Selected wallet is not a Return station / return operator. Switch to an authorized operator wallet.')
+      throw new Error('Selected wallet is not a an authorized return operator. Switch to an authorized operator wallet.')
     }
 
     const user = document.getElementById('return-address').value.trim()
     if (!ethers.isAddress(user)) {
-      throw new Error('Please enter a valid return address.')
+      throw new Error('Please enter a valid buyer wallet address.')
     }
 
     const items = Object.entries(scanned.return)
