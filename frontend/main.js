@@ -48,7 +48,7 @@ function renderCharts() {
       labels: ['Returned', 'In the wild'],
       datasets: [{
         data: [MOCK_STATS.bottlesReturned, MOCK_STATS.bottlesSold - MOCK_STATS.bottlesReturned],
-        backgroundColor: ['#15803d', '#bbf7d0'],
+        backgroundColor: ['#87D68D', '#F27D85'],
         borderWidth: 0,
       }]
     },
