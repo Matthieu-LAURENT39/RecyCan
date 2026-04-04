@@ -34,7 +34,7 @@
     <div></div>
   </header>
 
-  <main class="flex-1 flex items-center justify-center px-6">
+  <main class="flex-1 flex items-center justify-center px-6 py-8">
     <div class="w-full max-w-lg">
 
       <!-- Home -->
@@ -49,32 +49,31 @@
         <h2 class="text-xl font-bold mb-2">Buy a bottle</h2>
 
         <!-- Scanner -->
-        <div>
-          <button onclick="openScanner('buy')"
-            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500 hover:border-green-600 hover:text-green-700 transition-colors flex items-center justify-center gap-2">
-            📷 Scan barcode
-          </button>
-        </div>
+        <button onclick="openScanner('buy')"
+          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500 hover:border-green-600 hover:text-green-700 transition-colors flex items-center justify-center gap-2">
+          📷 Scan a barcode
+        </button>
         <div id="scanner-buy" class="hidden space-y-2">
           <video id="video-buy" class="w-full rounded-xl border border-gray-200" autoplay muted playsinline></video>
-          <div class="flex items-center justify-between">
-            <p class="text-xs text-gray-400">Barcode detected :</p>
-            <p id="barcode-buy" class="text-sm font-mono font-semibold text-green-700">—</p>
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-gray-400">Scanning...</span>
+            <span id="last-scan-buy" class="font-mono text-green-700">—</span>
           </div>
-          <button onclick="closeScanner('buy')"
-            class="w-full text-xs text-gray-400 hover:text-gray-600 py-1">
+          <button onclick="closeScanner('buy')" class="w-full text-xs text-gray-400 hover:text-gray-600 py-1">
             ✕ Close camera
           </button>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">Quantity</label>
-          <input id="qty-buy" type="number" min="1" value="1" oninput="updateBuy()"
-            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
+        <!-- Liste des produits scannés -->
+        <div id="list-buy" class="hidden space-y-2">
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Scanned items</p>
+          <div id="items-buy" class="space-y-2"></div>
         </div>
+
+        <!-- Total -->
         <div class="flex justify-between text-sm py-3 border-t border-gray-100">
           <span class="text-gray-500">Total deposit</span>
-          <span id="total-buy" class="font-semibold">3 Wei</span>
+          <span id="total-buy" class="font-semibold">0 Wei</span>
         </div>
         <button class="w-full bg-green-800 hover:bg-green-900 text-white font-semibold rounded-xl py-3 transition-colors">
           Confirm purchase
@@ -86,20 +85,17 @@
         <h2 class="text-xl font-bold mb-2">Return a bottle</h2>
 
         <!-- Scanner -->
-        <div>
-          <button onclick="openScanner('return')"
-            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500 hover:border-green-600 hover:text-green-700 transition-colors flex items-center justify-center gap-2">
-            📷 Scan barcode
-          </button>
-        </div>
+        <button onclick="openScanner('return')"
+          class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500 hover:border-green-600 hover:text-green-700 transition-colors flex items-center justify-center gap-2">
+          📷 Scan a barcode
+        </button>
         <div id="scanner-return" class="hidden space-y-2">
           <video id="video-return" class="w-full rounded-xl border border-gray-200" autoplay muted playsinline></video>
-          <div class="flex items-center justify-between">
-            <p class="text-xs text-gray-400">Barcode detected :</p>
-            <p id="barcode-return" class="text-sm font-mono font-semibold text-green-700">—</p>
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-gray-400">Scanning...</span>
+            <span id="last-scan-return" class="font-mono text-green-700">—</span>
           </div>
-          <button onclick="closeScanner('return')"
-            class="w-full text-xs text-gray-400 hover:text-gray-600 py-1">
+          <button onclick="closeScanner('return')" class="w-full text-xs text-gray-400 hover:text-gray-600 py-1">
             ✕ Close camera
           </button>
         </div>
@@ -109,14 +105,17 @@
           <input type="text" placeholder="0x..."
             class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-700" />
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">Number of bottles</label>
-          <input id="qty-return" type="number" min="1" value="1" oninput="updateReturn()"
-            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
+
+        <!-- Liste des produits scannés -->
+        <div id="list-return" class="hidden space-y-2">
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Scanned items</p>
+          <div id="items-return" class="space-y-2"></div>
         </div>
+
+        <!-- Total -->
         <div class="flex justify-between text-sm py-3 border-t border-gray-100">
           <span class="text-gray-500">Estimated refund</span>
-          <span id="total-return" class="font-semibold text-green-800">3 Wei</span>
+          <span id="total-return" class="font-semibold text-green-800">0 Wei</span>
         </div>
         <button class="w-full border-2 border-green-800 text-green-800 hover:bg-green-50 font-semibold rounded-xl py-3 transition-colors">
           Claim my deposit
@@ -131,40 +130,98 @@
   </footer>
 
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('qty-buy').value = 1
-      document.getElementById('qty-return').value = 1
-      updateBuy()
-      updateReturn()
-    })
+    // ─── State ───────────────────────────────────────────────
+    // { [view]: { [barcode]: quantity } }
+    const scanned = { buy: {}, return: {} }
+    const readers = {}
+    const scanCooldown = {}
 
-    // ─── Calculs ─────────────────────────────────────────────
-    function updateBuy() {
-      const qty = BigInt(document.getElementById('qty-buy').value || 0)
-      document.getElementById('total-buy').textContent = `${qty * DEPOSIT_PER_BOTTLE} ${SYMBOL}`
+    // ─── Rendu de la liste ───────────────────────────────────
+    function renderList(view) {
+      const items    = scanned[view]
+      const container = document.getElementById('items-' + view)
+      const list     = document.getElementById('list-' + view)
+      const barcodes = Object.keys(items)
+
+      if (barcodes.length === 0) {
+        list.classList.add('hidden')
+        return
+      }
+      list.classList.remove('hidden')
+
+      container.innerHTML = barcodes.map(code => `
+        <div class="flex items-center justify-between border border-gray-100 rounded-xl px-3 py-2 text-sm">
+          <span class="font-mono text-gray-600 truncate max-w-[180px]">${code}</span>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="changeQty('${view}', '${code}', -1)"
+              class="w-6 h-6 rounded-lg border border-gray-200 text-gray-500 hover:border-green-600 hover:text-green-700 flex items-center justify-center text-base leading-none">−</button>
+            <input type="number" min="1" value="${items[code]}"
+              onchange="setQty('${view}', '${code}', this.value)"
+              class="w-12 text-center border border-gray-200 rounded-lg py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-green-400" />
+            <button onclick="changeQty('${view}', '${code}', +1)"
+              class="w-6 h-6 rounded-lg border border-gray-200 text-gray-500 hover:border-green-600 hover:text-green-700 flex items-center justify-center text-base leading-none">+</button>
+            <button onclick="removeItem('${view}', '${code}')"
+              class="ml-1 text-gray-300 hover:text-red-400 text-xs">✕</button>
+          </div>
+        </div>
+      `).join('')
+
+      updateTotal(view)
     }
 
-    function updateReturn() {
-      const qty = BigInt(document.getElementById('qty-return').value || 0)
-      document.getElementById('total-return').textContent = `${qty * DEPOSIT_PER_BOTTLE} ${SYMBOL}`
+    function updateTotal(view) {
+      const items = scanned[view]
+      const total = Object.values(items).reduce((sum, qty) => sum + BigInt(qty), 0n) * DEPOSIT_PER_BOTTLE
+      document.getElementById('total-' + view).textContent = `${total} ${SYMBOL}`
+    }
+
+    // ─── Actions sur la liste ────────────────────────────────
+    function changeQty(view, code, delta) {
+      const newQty = (scanned[view][code] || 0) + delta
+      if (newQty <= 0) {
+        removeItem(view, code)
+      } else {
+        scanned[view][code] = newQty
+        renderList(view)
+      }
+    }
+
+    function setQty(view, code, value) {
+      const qty = parseInt(value)
+      if (!qty || qty <= 0) {
+        removeItem(view, code)
+      } else {
+        scanned[view][code] = qty
+        renderList(view)
+      }
+    }
+
+    function removeItem(view, code) {
+      delete scanned[view][code]
+      renderList(view)
+    }
+
+    function addScan(view, code) {
+      scanned[view][code] = (scanned[view][code] || 0) + 1
+      document.getElementById('last-scan-' + view).textContent = code
+      renderList(view)
     }
 
     // ─── Scanner ─────────────────────────────────────────────
-    const readers = {}
-
     function openScanner(view) {
       document.getElementById('scanner-' + view).classList.remove('hidden')
-      const video   = document.getElementById('video-' + view)
-      const barcode = document.getElementById('barcode-' + view)
-      const reader  = new ZXing.BrowserMultiFormatReader()
+      const video  = document.getElementById('video-' + view)
+      const reader = new ZXing.BrowserMultiFormatReader()
       readers[view] = reader
 
       reader.decodeFromConstraints(
         { video: { facingMode: 'environment' } },
         video,
         (result, err) => {
-          if (result) {
-            barcode.textContent = result.getText()
+          if (result && !scanCooldown[view]) {
+            scanCooldown[view] = true
+            addScan(view, result.getText())
+            setTimeout(() => { scanCooldown[view] = false }, 1500)
           }
         }
       )
@@ -176,27 +233,27 @@
         delete readers[view]
       }
       document.getElementById('scanner-' + view).classList.add('hidden')
-      document.getElementById('barcode-' + view).textContent = '—'
+      document.getElementById('last-scan-' + view).textContent = '—'
     }
 
     // ─── Navigation ──────────────────────────────────────────
     function switchView(view) {
       ['home', 'buy', 'return'].forEach(v => {
-        document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
+        document.getElementById('view-' + v).classList.toggle('hidden', v !== view)
         if (v !== view && readers[v]) closeScanner(v)
-      });
-      const btnB = document.getElementById('btn-buy');
-      const btnR = document.getElementById('btn-return');
+      })
+      const btnB = document.getElementById('btn-buy')
+      const btnR = document.getElementById('btn-return')
       if (view === 'buy') {
-        btnB.classList.add('bg-white', 'text-green-800');
-        btnB.classList.remove('border-2', 'border-white', 'text-white');
-        btnR.classList.add('border-2', 'border-white', 'text-white');
-        btnR.classList.remove('bg-white', 'text-green-800');
+        btnB.classList.add('bg-white', 'text-green-800')
+        btnB.classList.remove('border-2', 'border-white', 'text-white')
+        btnR.classList.add('border-2', 'border-white', 'text-white')
+        btnR.classList.remove('bg-white', 'text-green-800')
       } else if (view === 'return') {
-        btnR.classList.add('bg-white', 'text-green-800');
-        btnR.classList.remove('border-2', 'border-white', 'text-white');
-        btnB.classList.add('border-2', 'border-white', 'text-white');
-        btnB.classList.remove('bg-white', 'text-green-800');
+        btnR.classList.add('bg-white', 'text-green-800')
+        btnR.classList.remove('border-2', 'border-white', 'text-white')
+        btnB.classList.add('border-2', 'border-white', 'text-white')
+        btnB.classList.remove('bg-white', 'text-green-800')
       }
     }
   </script>
