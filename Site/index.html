@@ -174,8 +174,27 @@
         </div>
 
         <div class="border-2 border-gray-200 rounded-2xl p-6">
-          <p class="text-sm font-semibold mb-4">Returns per day (last 7 days)</p>
-          <canvas id="chart-returns"></canvas>
+          <p class="text-sm font-semibold mb-4">Bottles in circulation</p>
+          <div class="flex items-center gap-6">
+            <canvas id="chart-returns" class="max-w-[180px]"></canvas>
+            <div class="space-y-3 text-sm">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-green-700 shrink-0"></span>
+                <span class="text-gray-500">Returned</span>
+                <span class="font-semibold ml-auto pl-4">947</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-green-200 shrink-0"></span>
+                <span class="text-gray-500">In the wild</span>
+                <span class="font-semibold ml-auto pl-4">337</span>
+              </div>
+              <div class="border-t border-gray-100 pt-2 flex items-center gap-2">
+                <span class="w-3 h-3 shrink-0"></span>
+                <span class="text-gray-400 text-xs">Return rate</span>
+                <span class="font-bold text-green-700 ml-auto pl-4">73.7%</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="border-2 border-gray-200 rounded-2xl p-6">
