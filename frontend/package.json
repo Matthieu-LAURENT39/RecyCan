@@ -12,7 +12,8 @@
     "@reown/appkit": "^1.8.19",
     "@reown/appkit-adapter-ethers": "^1.8.19",
     "@zxing/library": "^0.20.0",
-    "ethers": "^6.16.0"
+    "ethers": "^6.16.0",
+    "html5-qrcode": "^2.3.8"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
