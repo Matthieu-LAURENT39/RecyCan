@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cannes Recycle</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
   <script>
     const DEPOSIT_PER_BOTTLE = 3n   // Wei
     const SYMBOL             = "Wei"
@@ -36,13 +37,36 @@
   <main class="flex-1 flex items-center justify-center px-6">
     <div class="w-full max-w-lg">
 
+      <!-- Home -->
       <div id="view-home" class="flex flex-col items-center justify-center text-center gap-3 py-16">
         <span class="text-5xl">🥤</span>
         <h2 class="text-2xl font-bold text-gray-800">Welcome</h2>
         <p class="text-gray-400 text-sm">Select an action from the menu</p>
       </div>
-            <div id="view-buy" class="hidden border-2 border-gray-200 rounded-2xl p-8 space-y-4">
+
+      <!-- Buy -->
+      <div id="view-buy" class="hidden border-2 border-gray-200 rounded-2xl p-8 space-y-4">
         <h2 class="text-xl font-bold mb-2">Buy a bottle</h2>
+
+        <!-- Scanner -->
+        <div>
+          <button onclick="openScanner('buy')"
+            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500 hover:border-green-600 hover:text-green-700 transition-colors flex items-center justify-center gap-2">
+            📷 Scan barcode
+          </button>
+        </div>
+        <div id="scanner-buy" class="hidden space-y-2">
+          <video id="video-buy" class="w-full rounded-xl border border-gray-200" autoplay muted playsinline></video>
+          <div class="flex items-center justify-between">
+            <p class="text-xs text-gray-400">Barcode detected :</p>
+            <p id="barcode-buy" class="text-sm font-mono font-semibold text-green-700">—</p>
+          </div>
+          <button onclick="closeScanner('buy')"
+            class="w-full text-xs text-gray-400 hover:text-gray-600 py-1">
+            ✕ Close camera
+          </button>
+        </div>
+
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Quantity</label>
           <input id="qty-buy" type="number" min="1" value="1" oninput="updateBuy()"
@@ -57,8 +81,29 @@
         </button>
       </div>
 
+      <!-- Return -->
       <div id="view-return" class="hidden border-2 border-gray-200 rounded-2xl p-8 space-y-4">
         <h2 class="text-xl font-bold mb-2">Return a bottle</h2>
+
+        <!-- Scanner -->
+        <div>
+          <button onclick="openScanner('return')"
+            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-500 hover:border-green-600 hover:text-green-700 transition-colors flex items-center justify-center gap-2">
+            📷 Scan barcode
+          </button>
+        </div>
+        <div id="scanner-return" class="hidden space-y-2">
+          <video id="video-return" class="w-full rounded-xl border border-gray-200" autoplay muted playsinline></video>
+          <div class="flex items-center justify-between">
+            <p class="text-xs text-gray-400">Barcode detected :</p>
+            <p id="barcode-return" class="text-sm font-mono font-semibold text-green-700">—</p>
+          </div>
+          <button onclick="closeScanner('return')"
+            class="w-full text-xs text-gray-400 hover:text-gray-600 py-1">
+            ✕ Close camera
+          </button>
+        </div>
+
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Your address</label>
           <input type="text" placeholder="0x..."
@@ -77,6 +122,7 @@
           Claim my deposit
         </button>
       </div>
+
     </div>
   </main>
 
@@ -92,6 +138,7 @@
       updateReturn()
     })
 
+    // ─── Calculs ─────────────────────────────────────────────
     function updateBuy() {
       const qty = BigInt(document.getElementById('qty-buy').value || 0)
       document.getElementById('total-buy').textContent = `${qty * DEPOSIT_PER_BOTTLE} ${SYMBOL}`
@@ -102,9 +149,41 @@
       document.getElementById('total-return').textContent = `${qty * DEPOSIT_PER_BOTTLE} ${SYMBOL}`
     }
 
+    // ─── Scanner ─────────────────────────────────────────────
+    const readers = {}
+
+    function openScanner(view) {
+      document.getElementById('scanner-' + view).classList.remove('hidden')
+      const video   = document.getElementById('video-' + view)
+      const barcode = document.getElementById('barcode-' + view)
+      const reader  = new ZXing.BrowserMultiFormatReader()
+      readers[view] = reader
+
+      reader.decodeFromConstraints(
+        { video: { facingMode: 'environment' } },
+        video,
+        (result, err) => {
+          if (result) {
+            barcode.textContent = result.getText()
+          }
+        }
+      )
+    }
+
+    function closeScanner(view) {
+      if (readers[view]) {
+        readers[view].reset()
+        delete readers[view]
+      }
+      document.getElementById('scanner-' + view).classList.add('hidden')
+      document.getElementById('barcode-' + view).textContent = '—'
+    }
+
+    // ─── Navigation ──────────────────────────────────────────
     function switchView(view) {
       ['home', 'buy', 'return'].forEach(v => {
         document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
+        if (v !== view && readers[v]) closeScanner(v)
       });
       const btnB = document.getElementById('btn-buy');
       const btnR = document.getElementById('btn-return');
