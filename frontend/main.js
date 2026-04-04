@@ -1,8 +1,8 @@
-import { ethers } from 'ethers'
-import { BrowserMultiFormatReader } from '@zxing/library'
 import { createAppKit } from '@reown/appkit'
 import { EthersAdapter } from '@reown/appkit-adapter-ethers'
 import { sepolia } from '@reown/appkit/networks'
+import { BrowserMultiFormatReader } from '@zxing/library'
+import { ethers } from 'ethers'
 
 // ─── WalletConnect AppKit ─────────────────────────────────
 const ethersAdapter = new EthersAdapter()
@@ -19,7 +19,7 @@ const modal = createAppKit({
   },
   features: {
     email: true,
-    socials:[
+    socials: [
       "google",
       "x",
       "github",
@@ -76,8 +76,7 @@ modal.subscribeAccount(async (account) => {
     signer = await provider.getSigner()
     const connectedAddress = account.address
 
-    const short = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`
-    setWalletStatus(`Connected: ${short} · ${CONTRACT_ADDRESS.slice(0, 6)}...${CONTRACT_ADDRESS.slice(-4)}`)
+    setWalletStatus(`Connected: ${connectedAddress}`)
 
     const returnInput = document.getElementById('return-address')
     if (!returnInput.value) {
@@ -507,7 +506,7 @@ async function claimDeposit() {
         throw new Error(`Insufficient refundable units for ${barcode}. Available: ${availableUnits}, requested: ${qty}.`)
       }
 
-      const tx = await c.returnBottle(user, p.barcodeHash, BigInt(qty))  
+      const tx = await c.returnBottle(user, p.barcodeHash, BigInt(qty))
       await tx.wait()
 
       const lineWei = p.depositWei * BigInt(qty)
@@ -684,7 +683,7 @@ window.addEventListener('load', () => {
   void checkReturnOperatorAuthorization()
   updateWalletGate()
 
-    if (window.ethereum) {
+  if (window.ethereum) {
     window.ethereum.on('accountsChanged', () => window.location.reload())
     window.ethereum.on('chainChanged', () => window.location.reload())
   }
