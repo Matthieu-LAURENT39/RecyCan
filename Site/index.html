@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cannes Recycle</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    const DEPOSIT_PER_BOTTLE = 3n   // Wei
+    const SYMBOL             = "Wei"
+  </script>
 </head>
 <body class="min-h-screen flex flex-col font-sans text-gray-900">
 
@@ -41,12 +45,12 @@
         <h2 class="text-xl font-bold mb-2">Buy a bottle</h2>
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Quantity</label>
-          <input type="number" min="1" value="1"
+          <input id="qty-buy" type="number" min="1" value="1" oninput="updateBuy()"
             class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
         </div>
         <div class="flex justify-between text-sm py-3 border-t border-gray-100">
           <span class="text-gray-500">Total deposit</span>
-          <span class="font-semibold">— ETH</span>
+          <span id="total-buy" class="font-semibold">3 Wei</span>
         </div>
         <button class="w-full bg-green-800 hover:bg-green-900 text-white font-semibold rounded-xl py-3 transition-colors">
           Confirm purchase
@@ -62,12 +66,12 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Number of bottles</label>
-          <input type="number" min="1" value="1"
+          <input id="qty-return" type="number" min="1" value="1" oninput="updateReturn()"
             class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-700" />
         </div>
         <div class="flex justify-between text-sm py-3 border-t border-gray-100">
           <span class="text-gray-500">Estimated refund</span>
-          <span class="font-semibold text-green-800">— ETH</span>
+          <span id="total-return" class="font-semibold text-green-800">3 Wei</span>
         </div>
         <button class="w-full border-2 border-green-800 text-green-800 hover:bg-green-50 font-semibold rounded-xl py-3 transition-colors">
           Claim my deposit
@@ -81,6 +85,16 @@
   </footer>
 
   <script>
+    function updateBuy() {
+      const qty = BigInt(document.getElementById('qty-buy').value || 0)
+      document.getElementById('total-buy').textContent = `${qty * DEPOSIT_PER_BOTTLE} ${SYMBOL}`
+    }
+
+    function updateReturn() {
+      const qty = BigInt(document.getElementById('qty-return').value || 0)
+      document.getElementById('total-return').textContent = `${qty * DEPOSIT_PER_BOTTLE} ${SYMBOL}`
+    }
+
     function switchView(view) {
       ['home', 'buy', 'return'].forEach(v => {
         document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
