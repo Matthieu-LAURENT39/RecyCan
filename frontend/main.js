@@ -32,6 +32,33 @@ const modal = createAppKit({
   },
   allWallets: "SHOW"
 })
+// ─── Mock stats ──────────────────────────────────────────
+const MOCK_STATS = {
+  bottlesSold: 1284,
+  bottlesReturned: 947,
+}
+
+function renderCharts() {
+  const ctx = document.getElementById('chart-returns')
+  if (!ctx || ctx._chartInstance) return
+
+  ctx._chartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Returned', 'In the wild'],
+      datasets: [{
+        data: [MOCK_STATS.bottlesReturned, MOCK_STATS.bottlesSold - MOCK_STATS.bottlesReturned],
+        backgroundColor: ['#15803d', '#bbf7d0'],
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '70%',
+      plugins: { legend: { display: false } }
+    }
+  })
+}
 
 // ─── Config ──────────────────────────────────────────────
 const SYMBOL = 'ETH'
@@ -89,7 +116,7 @@ modal.subscribeAccount(async (account) => {
     //updateWalletGate()
 
     const hash = location.hash.replace('#', '')
-    switchView(['buy', 'return', 'receipt'].includes(hash) ? hash : 'buy')
+    switchView(['buy', 'return', 'receipt', 'stats'].includes(hash) ? hash : 'buy')
   } else {
     provider = undefined
     signer = undefined
@@ -619,8 +646,10 @@ function switchView(view) {
 
   const btnB = document.getElementById('btn-buy')
   const btnR = document.getElementById('btn-return')
+  const btnS = document.getElementById('btn-stats')
 
   const setBadgeState = (button, isActive) => {
+    if (!button) return
     button.classList.remove(
       'bg-white',
       'text-green-800',
@@ -639,26 +668,54 @@ function switchView(view) {
     button.classList.add('border-2', 'border-white', 'text-white', 'hover:bg-green-700')
   }
 
-  setBadgeState(btnB, view !== 'return')
-  setBadgeState(btnR, view === 'return')
+  // Stats doesn't require a wallet
+  if (view === 'stats') {
+    ['buy', 'return', 'receipt'].forEach(v => {
+      const el = document.getElementById('view-' + v)
+      if (el) el.classList.add('hidden')
+      if ((v === 'buy' || v === 'return') && readers[v]) closeScanner(v)
+    })
+    const viewStats = document.getElementById('view-stats')
+    if (viewStats) viewStats.classList.remove('hidden')
+    const gate = document.getElementById('view-wallet-required')
+    if (gate) gate.classList.add('hidden')
+    const walletBlock = document.querySelector('#btn-connect')?.closest('div.mb-4')
+    if (walletBlock) walletBlock.classList.add('hidden')
+    location.hash = view
+    setBadgeState(btnB, false)
+    setBadgeState(btnR, false)
+    setBadgeState(btnS, true)
+    renderCharts()
+    return
+  }
+
+  const walletBlock = document.querySelector('#btn-connect')?.closest('div.mb-4')
+  if (walletBlock) walletBlock.classList.remove('hidden')
+
+  setBadgeState(btnS, false)
 
   if (!isWalletConnected()) {
-    ['buy', 'return', 'receipt'].forEach(v => {
-      document.getElementById('view-' + v).classList.add('hidden')
+    ['buy', 'return', 'receipt', 'stats'].forEach(v => {
+      const el = document.getElementById('view-' + v)
+      if (el) el.classList.add('hidden')
       if ((v === 'buy' || v === 'return') && readers[v]) closeScanner(v)
     })
 
     if (['buy', 'return', 'receipt'].includes(view) && location.hash !== `#${view}`) {
       location.hash = view
     }
+    setBadgeState(btnB, view !== 'return')
+    setBadgeState(btnR, view === 'return')
     return
   }
-  ['buy', 'return', 'receipt'].forEach(v => {
-    document.getElementById('view-' + v).classList.toggle('hidden', v !== view)
+  ['buy', 'return', 'receipt', 'stats'].forEach(v => {
+    const el = document.getElementById('view-' + v)
+    if (el) el.classList.toggle('hidden', v !== view)
     if (v !== view && (v === 'buy' || v === 'return') && readers[v]) closeScanner(v)
   })
 
-  document.getElementById('view-wallet-required').classList.add('hidden')
+  const gate = document.getElementById('view-wallet-required')
+  if (gate) gate.classList.add('hidden')
   location.hash = view
 
   if (view === 'buy') {
@@ -674,7 +731,7 @@ function switchView(view) {
 
 window.addEventListener('load', () => {
   const hash = location.hash.replace('#', '') || 'buy'
-  switchView(['buy', 'return'].includes(hash) ? hash : 'buy')
+  switchView(['buy', 'return', 'receipt', 'stats'].includes(hash) ? hash : 'buy')
 
   // Initialize the contract link in the header
   const link = document.getElementById('contract-link')

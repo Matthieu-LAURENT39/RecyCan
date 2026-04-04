@@ -6,13 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cannes Recycle</title>
   <link rel="stylesheet" href="./style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body class="min-h-screen flex flex-col font-sans text-gray-900">
 
   <header class="bg-green-800 px-8 py-5 grid grid-cols-3 items-center">
     <div class="flex items-center gap-3">
-      <span class="text-2xl">♻️</span>
+      <img src="logo.png" alt="Logo" class="h-16 w-16 object-contain" />
       <div>
         <h1 class="text-lg font-bold text-white tracking-tight">Cannes Recycle</h1>
         <p class="text-green-300 text-xs tracking-wide">Deposit · Blockchain</p>
@@ -20,12 +21,16 @@
     </div>
     <nav class="flex gap-3 justify-center">
       <button id="btn-buy" onclick="switchView('buy')"
-        class="header-tab px-6 py-2 bg-white text-green-800 font-semibold rounded-xl text-sm hover:bg-green-50">
+        class="px-6 py-2 bg-white text-green-800 font-semibold rounded-xl text-sm transition-colors hover:bg-green-50">
         🛒 Buy
       </button>
       <button id="btn-return" onclick="switchView('return')"
-        class="header-tab px-6 py-2 border-2 border-white text-white font-semibold rounded-xl text-sm hover:bg-green-700">
+        class="px-6 py-2 border-2 border-white text-white font-semibold rounded-xl text-sm transition-colors hover:bg-green-700">
         ↩️ Return
+      </button>
+      <button id="btn-stats" onclick="switchView('stats')"
+        class="px-6 py-2 border-2 border-white text-white font-semibold rounded-xl text-sm transition-colors hover:bg-green-700">
+        📊 Stats
       </button>
     </nav>
     <div class="flex justify-end">
@@ -183,6 +188,73 @@
           class="w-full bg-green-800 hover:bg-green-900 text-white font-semibold rounded-xl py-3 transition-colors">
           Go back to buying
         </button>
+      </div>
+
+      <!-- Stats -->
+      <div id="view-stats" class="hidden space-y-4">
+
+        <div class="border border-amber-200 bg-amber-50 rounded-2xl px-5 py-4 text-sm text-amber-800 flex gap-3">
+          <span class="text-lg shrink-0">⚠️</span>
+          <p>These figures are <strong>simulated</strong>, real data requires more time to accumulate than is available
+            in the hackathon. All the necessary information is recorded on-chain and can be queried at any time by
+            anyone.</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="border-2 border-gray-200 rounded-2xl p-5">
+            <p class="text-xs text-gray-400 mb-1">Bottles sold</p>
+            <p class="text-3xl font-bold text-gray-800">1 284</p>
+            <p class="text-xs text-green-600 mt-1">↑ +12% this week</p>
+          </div>
+          <div class="border-2 border-gray-200 rounded-2xl p-5">
+            <p class="text-xs text-gray-400 mb-1">Bottles returned</p>
+            <p class="text-3xl font-bold text-gray-800">947</p>
+            <p class="text-xs text-green-600 mt-1">73.7% return rate</p>
+          </div>
+          <div class="border-2 border-gray-200 rounded-2xl p-5">
+            <p class="text-xs text-gray-400 mb-1">Deposits locked</p>
+            <p class="text-3xl font-bold text-gray-800">0.107</p>
+            <p class="text-xs text-gray-400 mt-1">ETH on contract</p>
+          </div>
+          <div class="border-2 border-gray-200 rounded-2xl p-5">
+            <p class="text-xs text-gray-400 mb-1">Deposits refunded</p>
+            <p class="text-3xl font-bold text-gray-800">0.079</p>
+            <p class="text-xs text-gray-400 mt-1">ETH returned to users</p>
+          </div>
+        </div>
+
+        <div class="border-2 border-gray-200 rounded-2xl p-6">
+          <p class="text-sm font-semibold mb-4">Returns per day (last 7 days)</p>
+          <canvas id="chart-returns"></canvas>
+        </div>
+
+        <div class="border-2 border-gray-200 rounded-2xl p-6">
+          <p class="text-sm font-semibold mb-4">Top returned products</p>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between text-sm">
+              <span class="font-mono text-gray-500 text-xs">3760027840016</span>
+              <div class="flex-1 mx-3 bg-gray-100 rounded-full h-2">
+                <div class="bg-green-500 h-2 rounded-full" style="width:85%"></div>
+              </div>
+              <span class="font-semibold text-gray-700">340</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="font-mono text-gray-500 text-xs">5449000131805</span>
+              <div class="flex-1 mx-3 bg-gray-100 rounded-full h-2">
+                <div class="bg-green-500 h-2 rounded-full" style="width:62%"></div>
+              </div>
+              <span class="font-semibold text-gray-700">248</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="font-mono text-gray-500 text-xs">7622210100306</span>
+              <div class="flex-1 mx-3 bg-gray-100 rounded-full h-2">
+                <div class="bg-green-500 h-2 rounded-full" style="width:45%"></div>
+              </div>
+              <span class="font-semibold text-gray-700">179</span>
+            </div>
+          </div>
+        </div>
+
       </div>
 
     </div>
