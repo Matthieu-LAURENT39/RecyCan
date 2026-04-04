@@ -10,14 +10,27 @@ const ethersAdapter = new EthersAdapter()
 const modal = createAppKit({
   adapters: [ethersAdapter],
   networks: [sepolia],
-  projectId: '9dbab415b64ada5648b3f0fff195598b',
+  projectId: 'd4cf487a7a6e15c267de764e4f3e5635',
   metadata: {
     name: 'Cannes Recycle',
     description: 'Bottle deposit dApp',
     url: window.location.origin,
     icons: ["https://avatars.githubusercontent.com/u/179229932"]
   },
-  features: { analytics: true }
+  features: { 
+    email: true,
+    socials:[
+      "google",
+      "x",
+      "github",
+      "discord",
+      "apple",
+      "facebook",
+      "farcaster",
+    ],
+    emailShowWallets: true,
+  },
+  allWallets: "SHOW"
 })
 
 // ─── Config ──────────────────────────────────────────────
