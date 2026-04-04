@@ -3,10 +3,16 @@ import { network } from "hardhat";
 // Sample products to register after deployment.
 // These are products available at the bars in the ETHGlobal venue.
 const products = [
+    // ===== Plastic bottles (0.0003 ETH) ===== 
     // Badoit 33cl water bottle
-    { barcode: "3068320145105", depositWei: 300000000000000n }, // 0.0003 ETH
+    { barcode: "3068320145105", depositWei: 300000000000000n },
+    // Evian 33cl water bottle
+    { barcode: "3068320124407", depositWei: 300000000000000n },
+    // ===== Aluminum cans (0.0002 ETH) =====
     // Coca-Cola 33cl can
-    { barcode: "5449000214911", depositWei: 200000000000000n }, // 0.0002 ETH
+    { barcode: "5449000214911", depositWei: 200000000000000n },
+    // Orangina 33cl can
+    { barcode: "3124480184344", depositWei: 200000000000000n },
 ];
 
 function hashBarcode(ethers, barcode) {
