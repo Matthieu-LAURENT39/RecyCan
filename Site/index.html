@@ -125,6 +125,12 @@
     </div>
   </main>
 
+  <!-- Toast scan -->
+  <div id="toast"
+    class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-green-700 text-white text-sm font-semibold px-5 py-2 rounded-full shadow-lg opacity-0 translate-y-2 transition-all duration-300 pointer-events-none">
+    ✅ Scanned !
+  </div>
+
   <footer class="py-4 text-center text-xs text-gray-300">
     Cannes Recycle · ETHGlobal 2026
   </footer>
@@ -135,6 +141,7 @@
     const scanned = { buy: {}, return: {} }
     const readers = {}
     const scanCooldown = {}
+    const SCAN_DEBOUNCE_MS = 3000  // ms entre deux scans
 
     // ─── Rendu de la liste ───────────────────────────────────
     function renderList(view) {
@@ -204,7 +211,27 @@
     function addScan(view, code) {
       scanned[view][code] = (scanned[view][code] || 0) + 1
       document.getElementById('last-scan-' + view).textContent = code
+      flashScan(view)
       renderList(view)
+    }
+
+    function flashScan(view) {
+      const video = document.getElementById('video-' + view)
+
+      // Flash vert sur la vidéo
+      video.classList.add('ring-4', 'ring-green-400', 'ring-offset-2')
+      setTimeout(() => {
+        video.classList.remove('ring-4', 'ring-green-400', 'ring-offset-2')
+      }, 600)
+
+      // Toast "Scanned !"
+      const toast = document.getElementById('toast')
+      toast.classList.remove('opacity-0', 'translate-y-2')
+      toast.classList.add('opacity-100', 'translate-y-0')
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0')
+        toast.classList.add('opacity-0', 'translate-y-2')
+      }, 1200)
     }
 
     // ─── Scanner ─────────────────────────────────────────────
@@ -221,7 +248,7 @@
           if (result && !scanCooldown[view]) {
             scanCooldown[view] = true
             addScan(view, result.getText())
-            setTimeout(() => { scanCooldown[view] = false }, 1500)
+            setTimeout(() => { scanCooldown[view] = false }, SCAN_DEBOUNCE_MS)
           }
         }
       )
