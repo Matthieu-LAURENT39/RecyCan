@@ -1,0 +1,9 @@
+/* ─── Transitions vidéo scanner ─────────────────────────── */
+video {
+  transition: box-shadow 0.2s ease, outline 0.2s ease;
+}
+
+/* ─── Toast ──────────────────────────────────────────────── */
+#toast {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
