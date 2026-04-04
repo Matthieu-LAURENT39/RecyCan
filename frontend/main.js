@@ -1,3 +1,38 @@
+import { ethers } from 'ethers'
+import { BrowserMultiFormatReader } from '@zxing/library'
+import { createAppKit } from '@reown/appkit'
+import { EthersAdapter } from '@reown/appkit-adapter-ethers'
+import { sepolia } from '@reown/appkit/networks'
+
+// ─── WalletConnect AppKit ─────────────────────────────────
+const ethersAdapter = new EthersAdapter()
+
+const modal = createAppKit({
+  adapters: [ethersAdapter],
+  networks: [sepolia],
+  projectId: 'd4cf487a7a6e15c267de764e4f3e5635',
+  metadata: {
+    name: 'Cannes Recycle',
+    description: 'Bottle deposit dApp',
+    url: window.location.origin,
+    icons: ["https://avatars.githubusercontent.com/u/179229932"]
+  },
+  features: {
+    email: true,
+    socials:[
+      "google",
+      "x",
+      "github",
+      "discord",
+      "apple",
+      "facebook",
+      "farcaster",
+    ],
+    emailShowWallets: true,
+  },
+  allWallets: "SHOW"
+})
+
 // ─── Config ──────────────────────────────────────────────
 const SYMBOL = 'ETH'
 const SCAN_DEBOUNCE_MS = 3000
@@ -33,6 +68,38 @@ function updateWalletGate() {
     gate.classList.toggle('hidden', !locked)
   }
 }
+
+modal.subscribeAccount(async (account) => {
+  if (account.isConnected && account.address) {
+    const walletProvider = modal.getWalletProvider()
+    provider = new ethers.BrowserProvider(walletProvider)
+    signer = await provider.getSigner()
+    const connectedAddress = account.address
+
+    const short = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`
+    setWalletStatus(`Connected: ${short} · ${CONTRACT_ADDRESS.slice(0, 6)}...${CONTRACT_ADDRESS.slice(-4)}`)
+
+    const returnInput = document.getElementById('return-address')
+    if (!returnInput.value) {
+      returnInput.value = connectedAddress
+    }
+
+    contract = new ethers.Contract(getContractAddress(), CONTRACT_ABI, signer)
+    await refreshAllChainData()
+    await checkReturnOperatorAuthorization()
+    //updateWalletGate()
+
+    const hash = location.hash.replace('#', '')
+    switchView(['buy', 'return', 'receipt'].includes(hash) ? hash : 'buy')
+  } else {
+    provider = undefined
+    signer = undefined
+    contract = undefined
+    setWalletStatus('Wallet not connected')
+    //updateWalletGate()
+    switchView(location.hash.replace('#', '') || 'buy')
+  }
+})
 
 // ─── Blockchain ──────────────────────────────────────────
 // Normalizes a barcode by trimming whitespace and removing inner spaces.
@@ -104,6 +171,7 @@ function renderReceipt({ title, subtitle, items, totalWei, txs }) {
   switchView('receipt')
 }
 
+
 function setWalletStatus(text) {
   document.getElementById('wallet-status').textContent = text
 }
@@ -127,7 +195,7 @@ function setClaimButtonEnabled(enabled) {
 
 async function checkReturnOperatorAuthorization() {
   if (!window.ethereum) {
-    setReturnWarning('No wallet detected. Install MetaMask to verify return authorization.', true)
+    setReturnWarning('No wallet detected. Install a wallet to verify return authorization.', true)
     setClaimButtonEnabled(false)
     return false
   }
@@ -159,6 +227,8 @@ async function checkReturnOperatorAuthorization() {
   }
 }
 
+
+
 function WeiToEth(wei) {
   const eth = ethers.formatEther(wei)
   const [whole, frac = ''] = eth.split('.')
@@ -170,27 +240,7 @@ function WeiToEth(wei) {
 
 async function connectWallet() {
   try {
-    if (!window.ethereum) {
-      alert('No wallet found. Please install MetaMask.')
-      return
-    }
-
-    provider = new ethers.BrowserProvider(window.ethereum)
-    await provider.send('eth_requestAccounts', [])
-    signer = await provider.getSigner()
-    const connectedAddress = await signer.getAddress()
-
-    const short = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`
-    setWalletStatus(`Connected: ${short} · ${CONTRACT_ADDRESS.slice(0, 6)}...${CONTRACT_ADDRESS.slice(-4)}`)
-
-    const addr = getContractAddress()
-    contract = new ethers.Contract(addr, CONTRACT_ABI, signer)
-    await refreshAllChainData()
-    await checkReturnOperatorAuthorization()
-
-    const hash = location.hash.replace('#', '')
-    const nextView = ['buy', 'return', 'receipt'].includes(hash) ? hash : 'buy'
-    switchView(nextView)
+    await modal.open()
   } catch (e) {
     alert(e.shortMessage || e.message || 'Wallet connection failed.')
   }
@@ -201,7 +251,7 @@ async function ensureContract() {
     await connectWallet()
   }
   if (!signer) {
-    throw new Error('Please connect your wallet first.')
+    throw new Error('Please connect your wallet first, then try again.')
   }
 
   const addr = getContractAddress()
@@ -371,6 +421,7 @@ async function confirmPurchase() {
     button.disabled = true
     button.textContent = 'Processing...'
 
+
     const receiptItems = []
     const receiptTxs = []
     let totalWei = 0n
@@ -423,12 +474,12 @@ async function claimDeposit() {
     const c = await ensureContract()
     const canOperate = await checkReturnOperatorAuthorization()
     if (!canOperate) {
-      throw new Error('Selected wallet is not a an authorized return operator. Switch to an authorized operator wallet.')
+      throw new Error('Connected wallet is not an authorized return operator. Switch to the operator wallet.')
     }
 
     const user = document.getElementById('return-address').value.trim()
     if (!ethers.isAddress(user)) {
-      throw new Error('Please enter a valid buyer wallet address.')
+      throw new Error('Please enter a valid return address.')
     }
 
     const items = Object.entries(scanned.return)
@@ -456,7 +507,7 @@ async function claimDeposit() {
         throw new Error(`Insufficient refundable units for ${barcode}. Available: ${availableUnits}, requested: ${qty}.`)
       }
 
-      const tx = await c.returnBottle(user, p.barcodeHash, BigInt(qty))
+      const tx = await c.returnBottle(user, p.barcodeHash, BigInt(qty))  
       await tx.wait()
 
       const lineWei = p.depositWei * BigInt(qty)
@@ -529,9 +580,10 @@ function openScanner(view) {
     return
   }
 
+
   document.getElementById('scanner-' + view).classList.remove('hidden')
   const video = document.getElementById('video-' + view)
-  const reader = new ZXing.BrowserMultiFormatReader()
+  const reader = new BrowserMultiFormatReader()
   readers[view] = reader
 
   reader.decodeFromConstraints(
@@ -602,7 +654,6 @@ function switchView(view) {
     }
     return
   }
-
   ['buy', 'return', 'receipt'].forEach(v => {
     document.getElementById('view-' + v).classList.toggle('hidden', v !== view)
     if (v !== view && (v === 'buy' || v === 'return') && readers[v]) closeScanner(v)
@@ -619,11 +670,12 @@ function switchView(view) {
     setBadgeState(btnB, false)
     void checkReturnOperatorAuthorization()
   }
+
 }
 
 window.addEventListener('load', () => {
   const hash = location.hash.replace('#', '') || 'buy'
-  switchView(['buy', 'return', 'receipt'].includes(hash) ? hash : 'buy')
+  switchView(['buy', 'return'].includes(hash) ? hash : 'buy')
 
   // Initialize the contract link in the header
   const link = document.getElementById('contract-link')
@@ -632,8 +684,21 @@ window.addEventListener('load', () => {
   void checkReturnOperatorAuthorization()
   updateWalletGate()
 
-  if (window.ethereum) {
+    if (window.ethereum) {
     window.ethereum.on('accountsChanged', () => window.location.reload())
     window.ethereum.on('chainChanged', () => window.location.reload())
   }
 })
+
+
+// ─── Expose to window for inline onclick handlers ────────
+window.switchView = switchView
+window.connectWallet = connectWallet
+window.openScanner = openScanner
+window.closeScanner = closeScanner
+window.resetList = resetList
+window.confirmPurchase = confirmPurchase
+window.claimDeposit = claimDeposit
+window.changeQty = changeQty
+window.setQty = setQty
+window.removeItem = removeItem

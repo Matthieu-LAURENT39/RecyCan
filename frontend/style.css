@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 /* ─── Transitions vidéo scanner ─────────────────────────── */
 video {
   transition: box-shadow 0.2s ease, outline 0.2s ease;
