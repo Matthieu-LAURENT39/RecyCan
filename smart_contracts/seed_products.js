@@ -20,8 +20,10 @@ async function main() {
     }
 
     const { ethers } = await network.connect();
-
     const contract = await ethers.getContractAt("BottleDeposit", CONTRACT_ADDRESS);
+    if (!contract) {
+        throw new Error("Failed to get contract instance");
+    }
 
     console.log("Registering products...");
 
