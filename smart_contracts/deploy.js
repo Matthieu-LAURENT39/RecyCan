@@ -1,10 +1,6 @@
 import { network } from "hardhat";
 
 async function main() {
-    if (!machineAddress) {
-        throw new Error("Missing RETURN_OPERATOR_ADDRESS in environment");
-    }
-
     const { ethers, networkName } = await network.connect();
 
     const [deployer] = await ethers.getSigners();
@@ -17,7 +13,7 @@ async function main() {
     const contractAddress = await contract.getAddress();
     console.log(`BottleDeposit deployed to ${contractAddress} (https://sepolia.etherscan.io/address/${contractAddress})`);
 
-    console.log(`Remember to do export CONTRACT_ADDRESS=${CONTRACT_ADDRESS} in your environment before using the other scripts, and to update the frontend's CONTRACT_ADDRESS constant.`);
+    console.log(`Remember to do export CONTRACT_ADDRESS=${contractAddress} in your environment before using the other scripts, and to update the frontend's CONTRACT_ADDRESS constant.`);
 }
 
 

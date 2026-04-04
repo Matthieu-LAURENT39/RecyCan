@@ -4,6 +4,20 @@ import { sepolia } from '@reown/appkit/networks'
 import { BrowserMultiFormatReader } from '@zxing/library'
 import { ethers } from 'ethers'
 
+// ─── Config ──────────────────────────────────────────────
+const CONTRACT_ADDRESS = '0xF7498717dA7e3C63B8d764cD9Af5D1ba9c595A0c'
+const SYMBOL = 'ETH'
+const SCAN_DEBOUNCE_MS = 3000
+
+// Only touch this if you updated the smart contract!
+const CONTRACT_ABI = [
+  'function products(bytes32) view returns (uint256 depositWei, bool retired)',
+  'function refundableUnits(address, bytes32) view returns (uint256)',
+  'function isReturnOperator(address) view returns (bool)',
+  'function buyBottles(bytes32[] barcodeHashes, uint256[] quantities) payable',
+  'function returnBottles(address user, bytes32[] barcodeHashes, uint256[] quantities)'
+]
+
 // ─── WalletConnect AppKit ─────────────────────────────────
 const ethersAdapter = new EthersAdapter()
 
@@ -59,19 +73,6 @@ function renderCharts() {
     }
   })
 }
-
-// ─── Config ──────────────────────────────────────────────
-const SYMBOL = 'ETH'
-const SCAN_DEBOUNCE_MS = 3000
-const CONTRACT_ADDRESS = '0x99fc83461F447D77C0C3d5ddD7eB28336A7Eb06e'
-
-const CONTRACT_ABI = [
-  'function products(bytes32) view returns (uint256 depositWei, bool retired)',
-  'function refundableUnits(address, bytes32) view returns (uint256)',
-  'function isReturnOperator(address) view returns (bool)',
-  'function buyBottle(bytes32 barcodeHash, uint256 quantity) payable',
-  'function returnBottle(address user, bytes32 barcodeHash, uint256 quantity)'
-]
 
 // ─── State ───────────────────────────────────────────────
 const scanned = { buy: {}, return: {} }
@@ -155,7 +156,7 @@ function escapeHtml(text) {
     .replace(/'/g, '&#39;')
 }
 
-function renderReceipt({ title, subtitle, items, totalWei, txs }) {
+function renderReceipt({ title, subtitle, items, totalWei, txHash }) {
   const titleEl = document.getElementById('receipt-title')
   const subtitleEl = document.getElementById('receipt-subtitle')
   const itemsEl = document.getElementById('receipt-items')
@@ -184,15 +185,15 @@ function renderReceipt({ title, subtitle, items, totalWei, txs }) {
 
   totalEl.textContent = `${WeiToEth(totalWei)} ${SYMBOL}`
 
-  txsEl.innerHTML = txs.map(tx => `
-    <a href="${getTxExplorerUrl(tx.hash)}" target="_blank" rel="noopener noreferrer"
+  txsEl.innerHTML = txHash ? `
+    <a href="${getTxExplorerUrl(txHash)}" target="_blank" rel="noopener noreferrer"
       class="block border border-gray-100 rounded-xl px-3 py-2 hover:border-green-300 hover:bg-green-50 transition-colors">
       <div class="flex items-center justify-between gap-3 text-sm">
-        <span class="text-gray-700">${escapeHtml(tx.label)}</span>
-        <span class="font-mono text-[11px] text-green-700 truncate max-w-[180px]">${tx.hash}</span>
+        <span class="text-gray-700">Transaction</span>
+        <span class="font-mono text-[11px] text-green-700 truncate max-w-[180px]">${txHash}</span>
       </div>
     </a>
-  `).join('')
+  ` : ''
 
   switchView('receipt')
 }
@@ -449,7 +450,8 @@ async function confirmPurchase() {
 
 
     const receiptItems = []
-    const receiptTxs = []
+    const barcodeHashes = []
+    const quantities = []
     let totalWei = 0n
 
     for (const [barcode, qty] of items) {
@@ -462,8 +464,8 @@ async function confirmPurchase() {
       }
 
       const value = p.depositWei * BigInt(qty)
-      const tx = await c.buyBottle(p.barcodeHash, BigInt(qty), { value })
-      await tx.wait()
+      barcodeHashes.push(p.barcodeHash)
+      quantities.push(BigInt(qty))
 
       receiptItems.push({
         barcode,
@@ -471,12 +473,11 @@ async function confirmPurchase() {
         depositWei: p.depositWei,
         lineWei: value
       })
-      receiptTxs.push({
-        label: `Purchase for ${barcode}`,
-        hash: tx.hash
-      })
       totalWei += value
     }
+
+    const tx = await c.buyBottles(barcodeHashes, quantities, { value: totalWei })
+    await tx.wait()
 
     resetList('buy')
     renderReceipt({
@@ -484,7 +485,7 @@ async function confirmPurchase() {
       subtitle: 'Your bottles are registered for deposit refunds.',
       items: receiptItems,
       totalWei,
-      txs: receiptTxs
+      txHash: tx.hash
     })
   } catch (e) {
     alert(e.shortMessage || e.message || 'Transaction failed.')
@@ -519,7 +520,8 @@ async function claimDeposit() {
     button.textContent = 'Processing...'
 
     const receiptItems = []
-    const receiptTxs = []
+    const barcodeHashes = []
+    const quantities = []
     let totalWei = 0n
 
     for (const [barcode, qty] of items) {
@@ -533,22 +535,21 @@ async function claimDeposit() {
         throw new Error(`Insufficient refundable units for ${barcode}. Available: ${availableUnits}, requested: ${qty}.`)
       }
 
-      const tx = await c.returnBottle(user, p.barcodeHash, BigInt(qty))
-      await tx.wait()
-
       const lineWei = p.depositWei * BigInt(qty)
+      barcodeHashes.push(p.barcodeHash)
+      quantities.push(BigInt(qty))
+
       receiptItems.push({
         barcode,
         qty,
         depositWei: p.depositWei,
         lineWei
       })
-      receiptTxs.push({
-        label: `Return for ${barcode}`,
-        hash: tx.hash
-      })
       totalWei += lineWei
     }
+
+    const tx = await c.returnBottles(user, barcodeHashes, quantities)
+    await tx.wait()
 
     resetList('return')
     renderReceipt({
@@ -556,7 +557,7 @@ async function claimDeposit() {
       subtitle: `Refund destination: ${user}`,
       items: receiptItems,
       totalWei,
-      txs: receiptTxs
+      txHash: tx.hash
     })
   } catch (e) {
     alert(e.shortMessage || e.message || 'Transaction failed.')
