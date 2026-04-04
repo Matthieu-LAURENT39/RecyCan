@@ -36,6 +36,61 @@ function getContractAddress() {
   return CONTRACT_ADDRESS
 }
 
+function getTxExplorerUrl(txHash) {
+  return `https://sepolia.etherscan.io/tx/${txHash}`
+}
+
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function renderReceipt({ title, subtitle, items, totalWei, txs }) {
+  const titleEl = document.getElementById('receipt-title')
+  const subtitleEl = document.getElementById('receipt-subtitle')
+  const itemsEl = document.getElementById('receipt-items')
+  const totalEl = document.getElementById('receipt-total')
+  const txsEl = document.getElementById('receipt-txs')
+
+  titleEl.textContent = title
+  subtitleEl.textContent = subtitle
+
+  itemsEl.innerHTML = items.map(item => `
+    <div class="border border-gray-100 rounded-xl px-3 py-2 text-sm space-y-1">
+      <div class="flex items-center justify-between gap-3">
+        <span class="font-mono text-gray-700 truncate">${escapeHtml(item.barcode)}</span>
+        <span class="text-gray-800">x${item.qty}</span>
+      </div>
+      <div class="flex items-center justify-between text-xs text-gray-500">
+        <span>Deposit per unit</span>
+        <span>${WeiToEth(item.depositWei)} ${SYMBOL}</span>
+      </div>
+      <div class="flex items-center justify-between text-xs text-gray-500">
+        <span>Line total</span>
+        <span>${WeiToEth(item.lineWei)} ${SYMBOL}</span>
+      </div>
+    </div>
+  `).join('')
+
+  totalEl.textContent = `${WeiToEth(totalWei)} ${SYMBOL}`
+
+  txsEl.innerHTML = txs.map(tx => `
+    <a href="${getTxExplorerUrl(tx.hash)}" target="_blank" rel="noopener noreferrer"
+      class="block border border-gray-100 rounded-xl px-3 py-2 hover:border-green-300 hover:bg-green-50 transition-colors">
+      <div class="flex items-center justify-between gap-3 text-sm">
+        <span class="text-gray-700">${escapeHtml(tx.label)}</span>
+        <span class="font-mono text-[11px] text-green-700 truncate max-w-[180px]">${tx.hash}</span>
+      </div>
+    </a>
+  `).join('')
+
+  switchView('receipt')
+}
+
 function setWalletStatus(text) {
   document.getElementById('wallet-status').textContent = text
 }
@@ -297,6 +352,10 @@ async function confirmPurchase() {
     button.disabled = true
     button.textContent = 'Processing...'
 
+    const receiptItems = []
+    const receiptTxs = []
+    let totalWei = 0n
+
     for (const [barcode, qty] of items) {
       const p = await fetchProductData(barcode)
       if (!p.exists) {
@@ -309,10 +368,28 @@ async function confirmPurchase() {
       const value = p.depositWei * BigInt(qty)
       const tx = await c.buyBottle(p.barcodeHash, BigInt(qty), { value })
       await tx.wait()
+
+      receiptItems.push({
+        barcode,
+        qty,
+        depositWei: p.depositWei,
+        lineWei: value
+      })
+      receiptTxs.push({
+        label: `Purchase for ${barcode}`,
+        hash: tx.hash
+      })
+      totalWei += value
     }
 
     resetList('buy')
-    alert('Purchase confirmed on-chain.')
+    renderReceipt({
+      title: 'Purchase receipt',
+      subtitle: 'Your bottles are registered for deposit refunds.',
+      items: receiptItems,
+      totalWei,
+      txs: receiptTxs
+    })
   } catch (e) {
     alert(e.shortMessage || e.message || 'Transaction failed.')
   } finally {
@@ -345,6 +422,10 @@ async function claimDeposit() {
     button.disabled = true
     button.textContent = 'Processing...'
 
+    const receiptItems = []
+    const receiptTxs = []
+    let totalWei = 0n
+
     for (const [barcode, qty] of items) {
       const p = await fetchProductData(barcode)
       if (!p.exists) {
@@ -358,10 +439,29 @@ async function claimDeposit() {
 
       const tx = await c.returnBottle(user, p.barcodeHash, BigInt(qty))
       await tx.wait()
+
+      const lineWei = p.depositWei * BigInt(qty)
+      receiptItems.push({
+        barcode,
+        qty,
+        depositWei: p.depositWei,
+        lineWei
+      })
+      receiptTxs.push({
+        label: `Return for ${barcode}`,
+        hash: tx.hash
+      })
+      totalWei += lineWei
     }
 
     resetList('return')
-    alert('Refund claimed on-chain.')
+    renderReceipt({
+      title: 'Return receipt',
+      subtitle: `Refund destination: ${user}`,
+      items: receiptItems,
+      totalWei,
+      txs: receiptTxs
+    })
   } catch (e) {
     alert(e.shortMessage || e.message || 'Transaction failed.')
   } finally {
@@ -436,9 +536,7 @@ function closeScanner(view) {
 
 // ─── Navigation ──────────────────────────────────────────
 function switchView(view) {
-  location.hash = view
-  const views = ['buy', 'return']
-  views.forEach(v => {
+  ['buy', 'return', 'receipt'].forEach(v => {
     document.getElementById('view-' + v).classList.toggle('hidden', v !== view)
     if (v !== view && readers[v]) closeScanner(v)
   })

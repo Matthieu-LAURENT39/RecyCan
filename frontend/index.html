@@ -142,6 +142,34 @@
         </button>
       </div>
 
+      <!-- Receipt, hidden by default -->
+      <div id="view-receipt" class="hidden border-2 border-gray-200 rounded-2xl p-8 space-y-4 bg-white">
+        <div>
+          <h2 id="receipt-title" class="text-xl font-bold mb-1">Receipt</h2>
+          <p id="receipt-subtitle" class="text-sm text-gray-500">Transaction summary</p>
+        </div>
+
+        <div>
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Items</p>
+          <div id="receipt-items" class="space-y-2"></div>
+        </div>
+
+        <div class="flex justify-between text-sm py-3 border-t border-gray-100">
+          <span class="text-gray-500">Total</span>
+          <span id="receipt-total" class="font-semibold text-green-800">0 ETH</span>
+        </div>
+
+        <div>
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Transactions</p>
+          <div id="receipt-txs" class="space-y-2"></div>
+        </div>
+
+        <button onclick="switchView('buy')"
+          class="w-full bg-green-800 hover:bg-green-900 text-white font-semibold rounded-xl py-3 transition-colors">
+          Go back to buying
+        </button>
+      </div>
+
     </div>
   </main>
 
