@@ -94,6 +94,11 @@ contract BottleDeposit is Ownable, ReentrancyGuard {
      */
     error ProductAlreadyExists();
 
+    /**
+     * @notice Thrown when buyBottles or returnBottles is called with arrays of different lengths
+     */
+    error ArrayLengthMismatch();
+
     // ===== Events =====
     // These can be used for showing a history of purchases and returns, great to show
     // analytics and tracking how much products are being returned.
@@ -179,52 +184,99 @@ contract BottleDeposit is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Buys refundable units of a product by paying the exact deposit amount.
-     * @param barcodeHash The keccak256 hash of the product barcode being purchased.
-     * @param quantity The number of units to buy.
+     * @notice Pays the refundable deposit for a list of products, each with a specified quantity.
+     * @param barcodeHashes The keccak256 hash of the product barcodes being purchased.
+     * @param quantities The number of units to buy for each product.
+     * @dev quantities[i] is the quantity of the product in barcodeHashes[i].
      */
-    function buyBottle(bytes32 barcodeHash, uint256 quantity) external payable {
-        if (quantity == 0) revert InvalidQuantity();
+    function buyBottles(
+        bytes32[] calldata barcodeHashes,
+        uint256[] calldata quantities
+    ) external payable {
+        // Validate input lengths
+        uint256 len = barcodeHashes.length;
+        if (len != quantities.length) revert ArrayLengthMismatch();
 
-        Product memory p = products[barcodeHash];
-        if (p.depositWei == 0) revert UnknownProduct();
-        if (p.retired) revert RetiredProduct();
+        // Calculate the total required deposit
+        uint256 expectedDeposit = 0;
+        for (uint256 i = 0; i < len; ++i) {
+            uint256 quantity = quantities[i];
+            if (quantity == 0) revert InvalidQuantity();
 
-        uint256 expected = p.depositWei * quantity;
-        if (msg.value != expected) revert WrongAmount();
+            Product memory p = products[barcodeHashes[i]];
+            if (p.depositWei == 0) revert UnknownProduct();
+            if (p.retired) revert RetiredProduct();
 
-        refundableUnits[msg.sender][barcodeHash] += quantity;
+            expectedDeposit += p.depositWei * quantity;
+        }
 
-        emit BottleBought(msg.sender, barcodeHash, quantity, expected);
+        if (msg.value != expectedDeposit) revert WrongAmount();
+
+        // Update refundable units for the buyer
+        for (uint256 i = 0; i < len; ++i) {
+            bytes32 barcodeHash = barcodeHashes[i];
+            uint256 quantity = quantities[i];
+            uint256 deposit = products[barcodeHash].depositWei * quantity;
+
+            refundableUnits[msg.sender][barcodeHash] += quantity;
+
+            emit BottleBought(msg.sender, barcodeHash, quantity, deposit);
+        }
     }
 
     /**
      * @notice Processes a return for a user and refunds their deposit.
-     * @param user The buyer wallet that should receive the refund.
-     * @param barcodeHash The keccak256 hash of the returned product barcode.
-     * @param quantity The number of units being returned.
+     * @param user The buyer wallet that should receive the refund. It must match the wallet that bought the refundable units.
+     * @param barcodeHashes The keccak256 hashes of the returned product barcodes.
+     * @param quantities The number of units being returned for each product.
+     * @dev quantities[i] is the quantity of the product in barcodeHashes[i].
      */
-    function returnBottle(
+    function returnBottles(
         address user,
-        bytes32 barcodeHash,
-        uint256 quantity
+        bytes32[] calldata barcodeHashes,
+        uint256[] calldata quantities
     ) external nonReentrant {
+        // Ensure only authorized return operators can attest of a return
         if (!isReturnOperator[msg.sender]) revert NotReturnOperator();
-        if (quantity <= 0) revert InvalidQuantity();
 
-        Product memory p = products[barcodeHash];
-        if (p.depositWei == 0) revert UnknownProduct();
+        // Validate input lengths
+        uint256 len = barcodeHashes.length;
+        if (len != quantities.length) revert ArrayLengthMismatch();
 
-        if (refundableUnits[user][barcodeHash] < quantity) {
-            revert InsufficientUnits();
+        // Calculate how much to refund the user, and store the new remaining refundable units.
+        uint256 totalRefund = 0;
+        for (uint256 i = 0; i < len; ++i) {
+            bytes32 barcodeHash = barcodeHashes[i];
+            uint256 quantity = quantities[i];
+
+            if (quantity <= 0) revert InvalidQuantity();
+
+            Product memory p = products[barcodeHash];
+            if (p.depositWei == 0) revert UnknownProduct();
+
+            if (refundableUnits[user][barcodeHash] < quantity) {
+                revert InsufficientUnits();
+            }
+
+            refundableUnits[user][barcodeHash] -= quantity;
+            totalRefund += p.depositWei * quantity;
         }
 
-        refundableUnits[user][barcodeHash] -= quantity;
-
-        uint256 refund = p.depositWei * quantity;
-        (bool ok, ) = payable(user).call{value: refund}("");
+        (bool ok, ) = payable(user).call{value: totalRefund}("");
         if (!ok) revert RefundFailed();
 
-        emit BottleReturned(msg.sender, user, barcodeHash, quantity, refund);
+        // Emit events for each returned product, useful for statistics
+        for (uint256 i = 0; i < len; ++i) {
+            bytes32 barcodeHash = barcodeHashes[i];
+            uint256 quantity = quantities[i];
+            uint256 refund = products[barcodeHash].depositWei * quantity;
+            emit BottleReturned(
+                msg.sender,
+                user,
+                barcodeHash,
+                quantity,
+                refund
+            );
+        }
     }
 }
