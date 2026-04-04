@@ -632,6 +632,8 @@ function switchView(view) {
     if (viewStats) viewStats.classList.remove('hidden')
     const gate = document.getElementById('view-wallet-required')
     if (gate) gate.classList.add('hidden')
+    const walletBlock = document.querySelector('#btn-connect')?.closest('div.mb-4')
+    if (walletBlock) walletBlock.classList.add('hidden')
     location.hash = view
     setBadgeState(btnB, false)
     setBadgeState(btnR, false)
@@ -639,6 +641,9 @@ function switchView(view) {
     renderCharts()
     return
   }
+
+  const walletBlock = document.querySelector('#btn-connect')?.closest('div.mb-4')
+  if (walletBlock) walletBlock.classList.remove('hidden')
 
   setBadgeState(btnS, false)
 
