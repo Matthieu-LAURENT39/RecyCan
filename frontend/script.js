@@ -21,6 +21,19 @@ let provider
 let signer
 let contract
 
+function isWalletConnected() {
+  return Boolean(signer)
+}
+
+function updateWalletGate() {
+  const locked = !isWalletConnected()
+  const gate = document.getElementById('view-wallet-required')
+
+  if (gate) {
+    gate.classList.toggle('hidden', !locked)
+  }
+}
+
 // ─── Blockchain ──────────────────────────────────────────
 // Normalizes a barcode by trimming whitespace and removing inner spaces.
 function normalizeBarcode(barcode) {
@@ -174,6 +187,10 @@ async function connectWallet() {
     contract = new ethers.Contract(addr, CONTRACT_ABI, signer)
     await refreshAllChainData()
     await checkReturnOperatorAuthorization()
+
+    const hash = location.hash.replace('#', '')
+    const nextView = ['buy', 'return', 'receipt'].includes(hash) ? hash : 'buy'
+    switchView(nextView)
   } catch (e) {
     alert(e.shortMessage || e.message || 'Wallet connection failed.')
   }
@@ -328,6 +345,8 @@ function resetList(view) {
 }
 
 function addScan(view, code) {
+  if (!isWalletConnected()) return
+
   const normalized = normalizeBarcode(code)
   if (!normalized) return
 
@@ -505,6 +524,11 @@ function flashScan(view) {
 
 // ─── Scanner ─────────────────────────────────────────────
 function openScanner(view) {
+  if (!isWalletConnected()) {
+    alert('Please connect your wallet first.')
+    return
+  }
+
   document.getElementById('scanner-' + view).classList.remove('hidden')
   const video = document.getElementById('video-' + view)
   const reader = new ZXing.BrowserMultiFormatReader()
@@ -536,12 +560,43 @@ function closeScanner(view) {
 
 // ─── Navigation ──────────────────────────────────────────
 function switchView(view) {
-  ['buy', 'return', 'receipt'].forEach(v => {
-    document.getElementById('view-' + v).classList.toggle('hidden', v !== view)
-    if (v !== view && readers[v]) closeScanner(v)
-  })
+  updateWalletGate()
+
   const btnB = document.getElementById('btn-buy')
   const btnR = document.getElementById('btn-return')
+
+  if (view === 'return') {
+    btnR.classList.add('bg-white', 'text-green-800')
+    btnR.classList.remove('border-2', 'border-white', 'text-white')
+    btnB.classList.add('border-2', 'border-white', 'text-white')
+    btnB.classList.remove('bg-white', 'text-green-800')
+  } else {
+    btnB.classList.add('bg-white', 'text-green-800')
+    btnB.classList.remove('border-2', 'border-white', 'text-white')
+    btnR.classList.add('border-2', 'border-white', 'text-white')
+    btnR.classList.remove('bg-white', 'text-green-800')
+  }
+
+  if (!isWalletConnected()) {
+    ['buy', 'return', 'receipt'].forEach(v => {
+      document.getElementById('view-' + v).classList.add('hidden')
+      if ((v === 'buy' || v === 'return') && readers[v]) closeScanner(v)
+    })
+
+    if (['buy', 'return', 'receipt'].includes(view) && location.hash !== `#${view}`) {
+      location.hash = view
+    }
+    return
+  }
+
+  ['buy', 'return', 'receipt'].forEach(v => {
+    document.getElementById('view-' + v).classList.toggle('hidden', v !== view)
+    if (v !== view && (v === 'buy' || v === 'return') && readers[v]) closeScanner(v)
+  })
+
+  document.getElementById('view-wallet-required').classList.add('hidden')
+  location.hash = view
+
   if (view === 'buy') {
     btnB.classList.add('bg-white', 'text-green-800')
     btnB.classList.remove('border-2', 'border-white', 'text-white')
@@ -558,13 +613,14 @@ function switchView(view) {
 
 window.addEventListener('load', () => {
   const hash = location.hash.replace('#', '') || 'buy'
-  switchView(['buy', 'return'].includes(hash) ? hash : 'buy')
+  switchView(['buy', 'return', 'receipt'].includes(hash) ? hash : 'buy')
 
   // Initialize the contract link in the header
   const link = document.getElementById('contract-link')
   link.href = `https://sepolia.etherscan.io/address/${getContractAddress()}`
 
   void checkReturnOperatorAuthorization()
+  updateWalletGate()
 
   if (window.ethereum) {
     window.ethereum.on('accountsChanged', () => window.location.reload())
