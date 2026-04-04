@@ -40,6 +40,57 @@ function setWalletStatus(text) {
   document.getElementById('wallet-status').textContent = text
 }
 
+function setReturnWarning(message, visible) {
+  const warning = document.getElementById('return-operator-warning')
+  const warningText = document.getElementById('return-operator-warning-text')
+  if (!warning || !warningText) return
+
+  warningText.textContent = message
+  warning.classList.toggle('hidden', !visible)
+}
+
+function setClaimButtonEnabled(enabled) {
+  const button = document.getElementById('btn-claim-deposit')
+  if (!button) return
+  button.disabled = !enabled
+  button.classList.toggle('opacity-50', !enabled)
+  button.classList.toggle('cursor-not-allowed', !enabled)
+}
+
+async function checkReturnOperatorAuthorization() {
+  if (!window.ethereum) {
+    setReturnWarning('No wallet detected. Install MetaMask to verify return authorization.', true)
+    setClaimButtonEnabled(false)
+    return false
+  }
+
+  if (!signer) {
+    setReturnWarning('', false)
+    setClaimButtonEnabled(false)
+    return false
+  }
+
+  try {
+    const c = await ensureContract()
+    const operator = await signer.getAddress()
+    const canOperate = await c.isReturnOperator(operator)
+
+    if (!canOperate) {
+      setReturnWarning('Selected wallet does not belong to an authorized return operator. Switch to an authorized operator wallet.', true)
+      setClaimButtonEnabled(false)
+      return false
+    }
+
+    setReturnWarning('', false)
+    setClaimButtonEnabled(true)
+    return true
+  } catch (e) {
+    setReturnWarning('Unable to verify return authorization right now. Please reconnect the wallet and try again.', true)
+    setClaimButtonEnabled(false)
+    return false
+  }
+}
+
 function WeiToEth(wei) {
   const eth = ethers.formatEther(wei)
   const [whole, frac = ''] = eth.split('.')
@@ -72,6 +123,7 @@ async function connectWallet() {
     const addr = getContractAddress()
     contract = new ethers.Contract(addr, CONTRACT_ABI, signer)
     await refreshAllChainData()
+    await checkReturnOperatorAuthorization()
   } catch (e) {
     alert(e.shortMessage || e.message || 'Wallet connection failed.')
   }
@@ -278,10 +330,9 @@ async function confirmPurchase() {
 async function claimDeposit() {
   try {
     const c = await ensureContract()
-    const operator = await signer.getAddress()
-    const canOperate = await c.isReturnOperator(operator)
+    const canOperate = await checkReturnOperatorAuthorization()
     if (!canOperate) {
-      throw new Error('Connected wallet is not an authorized return operator. Switch to the operator wallet.')
+      throw new Error('Selected wallet is not a Return station / return operator. Switch to an authorized operator wallet.')
     }
 
     const user = document.getElementById('return-address').value.trim()
@@ -320,8 +371,8 @@ async function claimDeposit() {
     alert(e.shortMessage || e.message || 'Transaction failed.')
   } finally {
     const button = document.getElementById('btn-claim-deposit')
-    button.disabled = false
     button.textContent = 'Claim my deposit'
+    await checkReturnOperatorAuthorization()
   }
 }
 
@@ -408,6 +459,7 @@ function switchView(view) {
     btnR.classList.remove('border-2', 'border-white', 'text-white')
     btnB.classList.add('border-2', 'border-white', 'text-white')
     btnB.classList.remove('bg-white', 'text-green-800')
+    void checkReturnOperatorAuthorization()
   }
 }
 
@@ -418,6 +470,8 @@ window.addEventListener('load', () => {
   // Initialize the contract link in the header
   const link = document.getElementById('contract-link')
   link.href = `https://sepolia.etherscan.io/address/${getContractAddress()}`
+
+  void checkReturnOperatorAuthorization()
 
   if (window.ethereum) {
     window.ethereum.on('accountsChanged', () => window.location.reload())
