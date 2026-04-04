@@ -3,6 +3,7 @@ import { EthersAdapter } from '@reown/appkit-adapter-ethers'
 import { sepolia } from '@reown/appkit/networks'
 import { BrowserMultiFormatReader } from '@zxing/library'
 import { ethers } from 'ethers'
+import { Html5Qrcode } from 'html5-qrcode'
 
 // ─── Config ──────────────────────────────────────────────
 const CONTRACT_ADDRESS = '0xF7498717dA7e3C63B8d764cD9Af5D1ba9c595A0c'
@@ -105,11 +106,6 @@ modal.subscribeAccount(async (account) => {
     const connectedAddress = account.address
 
     setWalletStatus(`Connected: ${connectedAddress}`)
-
-    const returnInput = document.getElementById('return-address')
-    if (!returnInput.value) {
-      returnInput.value = connectedAddress
-    }
 
     contract = new ethers.Contract(getContractAddress(), CONTRACT_ABI, signer)
     await refreshAllChainData()
@@ -427,6 +423,11 @@ function addScan(view, code) {
   const normalized = normalizeBarcode(code)
   if (!normalized) return
 
+  if (!isValidEAN13(normalized)) {
+    document.getElementById('last-scan-' + view).textContent = `Invalid barcode: ${normalized}`
+    return
+  }
+
   scanned[view][normalized] = (scanned[view][normalized] || 0) + 1
   document.getElementById('last-scan-' + view).textContent = normalized
   beep()
@@ -600,6 +601,15 @@ function flashScan(view) {
   }, 1200)
 }
 
+// ─── Barcode validation ──────────────────────────────────
+function isValidEAN13(code) {
+  if (!/^\d{13}$/.test(code)) return false
+  const digits = code.split('').map(Number)
+  const sum = digits.slice(0, 12).reduce((acc, d, i) => acc + d * (i % 2 === 0 ? 1 : 3), 0)
+  const checkDigit = (10 - (sum % 10)) % 10
+  return checkDigit === digits[12]
+}
+
 // ─── Scanner ─────────────────────────────────────────────
 function openScanner(view) {
   if (!isWalletConnected()) {
@@ -748,6 +758,44 @@ window.addEventListener('load', () => {
 })
 
 
+// ─── Wallet QR Scanner ───────────────────────────────────
+let walletScanner = null
+
+function extractEthAddress(text) {
+  if (text.startsWith('0x') && text.length === 42) return text
+  if (text.startsWith('ethereum:')) {
+    const match = text.match(/0x[a-fA-F0-9]{40}/)
+    return match ? match[0] : null
+  }
+  return null
+}
+
+function openWalletScanner() {
+  document.getElementById('wallet-scanner-container').classList.remove('hidden')
+  walletScanner = new Html5Qrcode('scanner-wallet-address')
+  walletScanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: 250 },
+    (decodedText) => {
+      const address = extractEthAddress(decodedText)
+      if (address) {
+        document.getElementById('return-address').value = address
+        closeWalletScanner()
+      }
+    }
+  )
+}
+
+function closeWalletScanner() {
+  if (walletScanner) {
+    walletScanner.stop().then(() => {
+      walletScanner.clear()
+      walletScanner = null
+    })
+  }
+  document.getElementById('wallet-scanner-container').classList.add('hidden')
+}
+
 // ─── Expose to window for inline onclick handlers ────────
 window.switchView = switchView
 window.connectWallet = connectWallet
@@ -759,3 +807,5 @@ window.claimDeposit = claimDeposit
 window.changeQty = changeQty
 window.setQty = setQty
 window.removeItem = removeItem
+window.openWalletScanner = openWalletScanner
+window.closeWalletScanner = closeWalletScanner

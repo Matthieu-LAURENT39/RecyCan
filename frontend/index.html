@@ -82,7 +82,12 @@
           📷 Scan a barcode
         </button>
         <div id="scanner-buy" class="hidden space-y-2">
-          <video id="video-buy" class="w-full rounded-xl border border-gray-200" autoplay muted playsinline></video>
+          <div class="relative">
+            <video id="video-buy" class="w-full rounded-xl border border-gray-200" autoplay muted playsinline></video>
+            <div class="absolute inset-0 flex items-center justify-center pointer-events-none rounded-xl overflow-hidden">
+              <div class="w-1/2 h-36 border-2 border-green-400 rounded-sm shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
+            </div>
+          </div>
           <div class="flex items-center justify-between text-xs">
             <span class="text-gray-400">Scanning...</span>
             <span id="last-scan-buy" class="font-mono text-green-700">—</span>
@@ -121,7 +126,12 @@
           📷 Scan a barcode
         </button>
         <div id="scanner-return" class="hidden space-y-2">
-          <video id="video-return" class="w-full rounded-xl border border-gray-200" autoplay muted playsinline></video>
+          <div class="relative">
+            <video id="video-return" class="w-full rounded-xl border border-gray-200" autoplay muted playsinline></video>
+            <div class="absolute inset-0 flex items-center justify-center pointer-events-none rounded-xl overflow-hidden">
+              <div class="w-1/2 h-36 border-2 border-green-400 rounded-sm shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"></div>
+            </div>
+          </div>
           <div class="flex items-center justify-between text-xs">
             <span class="text-gray-400">Scanning...</span>
             <span id="last-scan-return" class="font-mono text-green-700">—</span>
@@ -133,8 +143,20 @@
 
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Buyer's wallet address</label>
-          <input id="return-address" type="text" placeholder="Buyer wallet (0x...)"
-            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-700" />
+          <div class="flex gap-2">
+            <input id="return-address" type="text" placeholder="Buyer wallet (0x...)"
+              class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-700" />
+            <button onclick="openWalletScanner()"
+              class="border border-gray-200 rounded-xl px-3 text-gray-500 hover:border-green-600 hover:text-green-700 transition-colors text-lg">
+              📷
+            </button>
+          </div>
+        </div>
+        <div id="wallet-scanner-container" class="hidden space-y-2">
+          <div id="scanner-wallet-address" class="w-full rounded-xl overflow-hidden"></div>
+          <button onclick="closeWalletScanner()" class="w-full text-xs text-gray-400 hover:text-gray-600 py-1">
+            ✕ Close wallet scanner
+          </button>
         </div>
 
         <div id="return-operator-warning"
