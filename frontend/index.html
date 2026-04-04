@@ -20,11 +20,11 @@
     </div>
     <nav class="flex gap-3 justify-center">
       <button id="btn-buy" onclick="switchView('buy')"
-        class="px-6 py-2 bg-white text-green-800 font-semibold rounded-xl text-sm transition-colors hover:bg-green-50">
+        class="header-tab px-6 py-2 bg-white text-green-800 font-semibold rounded-xl text-sm hover:bg-green-50">
         🛒 Buy
       </button>
       <button id="btn-return" onclick="switchView('return')"
-        class="px-6 py-2 border-2 border-white text-white font-semibold rounded-xl text-sm transition-colors hover:bg-green-700">
+        class="header-tab px-6 py-2 border-2 border-white text-white font-semibold rounded-xl text-sm hover:bg-green-700">
         ↩️ Return
       </button>
     </nav>
@@ -40,6 +40,20 @@
   <main class="flex-1 flex items-center justify-center px-6 py-8">
     <div class="w-full max-w-lg">
 
+      <div id="return-process-info"
+        class="hidden mb-4 border border-blue-200 bg-blue-50 text-blue-900 rounded-xl px-4 py-3 text-sm">
+        <p class="font-semibold">About the return process</p>
+        <p>
+          In a real deployment, the whole return flow would be handled by a specialized return machine.<br>
+          The user would place the bottle in the machine in a way where the user can no longer retrieve it. It would
+          then scan the barcode, and validate that the product is a match (correct weight and/or dimensions),
+          before finally authorizing the refund. This is similar to how existing collection sheme machines work.<br>
+          Only the address associated with those machines would be marked as "authorized" to process returns in the
+          smart contract, and would be the only ones able to trigger refunds.<br>
+          For demo purposes, this whole process is simulated by this web interface.
+        </p>
+      </div>
+
       <div class="mb-4 border border-gray-200 rounded-2xl p-4 space-y-3 bg-white">
         <div class="flex items-center justify-between gap-3">
           <p id="wallet-status" class="text-xs text-gray-500 truncate">Wallet not connected</p>
@@ -50,11 +64,8 @@
         </div>
       </div>
 
-      <!-- Home -->
-      <div id="view-home" class="flex flex-col items-center justify-center text-center gap-3 py-16">
-        <span class="text-5xl">🥤</span>
-        <h2 class="text-2xl font-bold text-gray-800">Welcome</h2>
-        <p class="text-gray-400 text-sm">Select an action from the menu</p>
+      <div id="view-wallet-required" class="hidden border-2 border-dashed border-gray-300 rounded-2xl p-8 bg-white">
+        <p class="text-center text-gray-600 font-medium">Please connect your wallet first.</p>
       </div>
 
       <!-- Buy -->
@@ -88,7 +99,7 @@
 
         <div class="flex justify-between text-sm py-3 border-t border-gray-100">
           <span class="text-gray-500">Total deposit</span>
-          <span id="total-buy" class="font-semibold">0 Wei</span>
+          <span id="total-buy" class="font-semibold">0 Eth</span>
         </div>
         <button id="btn-confirm-purchase" onclick="confirmPurchase()"
           class="w-full bg-green-800 hover:bg-green-900 text-white font-semibold rounded-xl py-3 transition-colors">
@@ -116,9 +127,14 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">Your address</label>
-          <input id="return-address" type="text" placeholder="0x..."
+          <label class="block text-sm font-medium text-gray-600 mb-1">Buyer's wallet address</label>
+          <input id="return-address" type="text" placeholder="Buyer wallet (0x...)"
             class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-700" />
+        </div>
+
+        <div id="return-operator-warning"
+          class="hidden border border-amber-300 bg-amber-50 text-amber-800 rounded-xl px-4 py-3 text-sm">
+          <p id="return-operator-warning-text">This wallet is not authorized for bottle returns.</p>
         </div>
 
         <div id="list-return" class="hidden space-y-2">
@@ -133,11 +149,39 @@
 
         <div class="flex justify-between text-sm py-3 border-t border-gray-100">
           <span class="text-gray-500">Estimated refund</span>
-          <span id="total-return" class="font-semibold text-green-800">0 Wei</span>
+          <span id="total-return" class="font-semibold text-green-800">0 Eth</span>
         </div>
         <button id="btn-claim-deposit" onclick="claimDeposit()"
           class="w-full border-2 border-green-800 text-green-800 hover:bg-green-50 font-semibold rounded-xl py-3 transition-colors">
           Claim my deposit
+        </button>
+      </div>
+
+      <!-- Receipt, hidden by default -->
+      <div id="view-receipt" class="hidden border-2 border-gray-200 rounded-2xl p-8 space-y-4 bg-white">
+        <div>
+          <h2 id="receipt-title" class="text-xl font-bold mb-1">Receipt</h2>
+          <p id="receipt-subtitle" class="text-sm text-gray-500">Transaction summary</p>
+        </div>
+
+        <div>
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Items</p>
+          <div id="receipt-items" class="space-y-2"></div>
+        </div>
+
+        <div class="flex justify-between text-sm py-3 border-t border-gray-100">
+          <span class="text-gray-500">Total</span>
+          <span id="receipt-total" class="font-semibold text-green-800">0 ETH</span>
+        </div>
+
+        <div>
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Transactions</p>
+          <div id="receipt-txs" class="space-y-2"></div>
+        </div>
+
+        <button onclick="switchView('buy')"
+          class="w-full bg-green-800 hover:bg-green-900 text-white font-semibold rounded-xl py-3 transition-colors">
+          Go back to buying
         </button>
       </div>
 

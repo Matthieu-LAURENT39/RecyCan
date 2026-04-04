@@ -9,3 +9,12 @@ video {
 #toast {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
+
+/* Header view-switch badges share one hover animation. */
+.header-tab {
+  transition: transform 0.18s ease, background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.header-tab:hover {
+  transform: translateY(-1px);
+}

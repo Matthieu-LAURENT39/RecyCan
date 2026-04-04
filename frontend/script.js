@@ -21,6 +21,19 @@ let provider
 let signer
 let contract
 
+function isWalletConnected() {
+  return Boolean(signer)
+}
+
+function updateWalletGate() {
+  const locked = !isWalletConnected()
+  const gate = document.getElementById('view-wallet-required')
+
+  if (gate) {
+    gate.classList.toggle('hidden', !locked)
+  }
+}
+
 // ─── Blockchain ──────────────────────────────────────────
 // Normalizes a barcode by trimming whitespace and removing inner spaces.
 function normalizeBarcode(barcode) {
@@ -36,8 +49,114 @@ function getContractAddress() {
   return CONTRACT_ADDRESS
 }
 
+function getTxExplorerUrl(txHash) {
+  return `https://sepolia.etherscan.io/tx/${txHash}`
+}
+
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function renderReceipt({ title, subtitle, items, totalWei, txs }) {
+  const titleEl = document.getElementById('receipt-title')
+  const subtitleEl = document.getElementById('receipt-subtitle')
+  const itemsEl = document.getElementById('receipt-items')
+  const totalEl = document.getElementById('receipt-total')
+  const txsEl = document.getElementById('receipt-txs')
+
+  titleEl.textContent = title
+  subtitleEl.textContent = subtitle
+
+  itemsEl.innerHTML = items.map(item => `
+    <div class="border border-gray-100 rounded-xl px-3 py-2 text-sm space-y-1">
+      <div class="flex items-center justify-between gap-3">
+        <span class="font-mono text-gray-700 truncate">${escapeHtml(item.barcode)}</span>
+        <span class="text-gray-800">x${item.qty}</span>
+      </div>
+      <div class="flex items-center justify-between text-xs text-gray-500">
+        <span>Deposit per unit</span>
+        <span>${WeiToEth(item.depositWei)} ${SYMBOL}</span>
+      </div>
+      <div class="flex items-center justify-between text-xs text-gray-500">
+        <span>Line total</span>
+        <span>${WeiToEth(item.lineWei)} ${SYMBOL}</span>
+      </div>
+    </div>
+  `).join('')
+
+  totalEl.textContent = `${WeiToEth(totalWei)} ${SYMBOL}`
+
+  txsEl.innerHTML = txs.map(tx => `
+    <a href="${getTxExplorerUrl(tx.hash)}" target="_blank" rel="noopener noreferrer"
+      class="block border border-gray-100 rounded-xl px-3 py-2 hover:border-green-300 hover:bg-green-50 transition-colors">
+      <div class="flex items-center justify-between gap-3 text-sm">
+        <span class="text-gray-700">${escapeHtml(tx.label)}</span>
+        <span class="font-mono text-[11px] text-green-700 truncate max-w-[180px]">${tx.hash}</span>
+      </div>
+    </a>
+  `).join('')
+
+  switchView('receipt')
+}
+
 function setWalletStatus(text) {
   document.getElementById('wallet-status').textContent = text
+}
+
+function setReturnWarning(message, visible) {
+  const warning = document.getElementById('return-operator-warning')
+  const warningText = document.getElementById('return-operator-warning-text')
+  if (!warning || !warningText) return
+
+  warningText.textContent = message
+  warning.classList.toggle('hidden', !visible)
+}
+
+function setClaimButtonEnabled(enabled) {
+  const button = document.getElementById('btn-claim-deposit')
+  if (!button) return
+  button.disabled = !enabled
+  button.classList.toggle('opacity-50', !enabled)
+  button.classList.toggle('cursor-not-allowed', !enabled)
+}
+
+async function checkReturnOperatorAuthorization() {
+  if (!window.ethereum) {
+    setReturnWarning('No wallet detected. Install MetaMask to verify return authorization.', true)
+    setClaimButtonEnabled(false)
+    return false
+  }
+
+  if (!signer) {
+    setReturnWarning('', false)
+    setClaimButtonEnabled(false)
+    return false
+  }
+
+  try {
+    const c = await ensureContract()
+    const operator = await signer.getAddress()
+    const canOperate = await c.isReturnOperator(operator)
+
+    if (!canOperate) {
+      setReturnWarning('Selected wallet does not belong to an authorized return operator. Switch to an authorized operator wallet.', true)
+      setClaimButtonEnabled(false)
+      return false
+    }
+
+    setReturnWarning('', false)
+    setClaimButtonEnabled(true)
+    return true
+  } catch (e) {
+    setReturnWarning('Unable to verify return authorization right now. Please reconnect the wallet and try again.', true)
+    setClaimButtonEnabled(false)
+    return false
+  }
 }
 
 function WeiToEth(wei) {
@@ -64,14 +183,14 @@ async function connectWallet() {
     const short = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`
     setWalletStatus(`Connected: ${short} · ${CONTRACT_ADDRESS.slice(0, 6)}...${CONTRACT_ADDRESS.slice(-4)}`)
 
-    const returnInput = document.getElementById('return-address')
-    if (!returnInput.value) {
-      returnInput.value = connectedAddress
-    }
-
     const addr = getContractAddress()
     contract = new ethers.Contract(addr, CONTRACT_ABI, signer)
     await refreshAllChainData()
+    await checkReturnOperatorAuthorization()
+
+    const hash = location.hash.replace('#', '')
+    const nextView = ['buy', 'return', 'receipt'].includes(hash) ? hash : 'buy'
+    switchView(nextView)
   } catch (e) {
     alert(e.shortMessage || e.message || 'Wallet connection failed.')
   }
@@ -226,6 +345,8 @@ function resetList(view) {
 }
 
 function addScan(view, code) {
+  if (!isWalletConnected()) return
+
   const normalized = normalizeBarcode(code)
   if (!normalized) return
 
@@ -250,6 +371,10 @@ async function confirmPurchase() {
     button.disabled = true
     button.textContent = 'Processing...'
 
+    const receiptItems = []
+    const receiptTxs = []
+    let totalWei = 0n
+
     for (const [barcode, qty] of items) {
       const p = await fetchProductData(barcode)
       if (!p.exists) {
@@ -262,10 +387,28 @@ async function confirmPurchase() {
       const value = p.depositWei * BigInt(qty)
       const tx = await c.buyBottle(p.barcodeHash, BigInt(qty), { value })
       await tx.wait()
+
+      receiptItems.push({
+        barcode,
+        qty,
+        depositWei: p.depositWei,
+        lineWei: value
+      })
+      receiptTxs.push({
+        label: `Purchase for ${barcode}`,
+        hash: tx.hash
+      })
+      totalWei += value
     }
 
     resetList('buy')
-    alert('Purchase confirmed on-chain.')
+    renderReceipt({
+      title: 'Purchase receipt',
+      subtitle: 'Your bottles are registered for deposit refunds.',
+      items: receiptItems,
+      totalWei,
+      txs: receiptTxs
+    })
   } catch (e) {
     alert(e.shortMessage || e.message || 'Transaction failed.')
   } finally {
@@ -278,15 +421,14 @@ async function confirmPurchase() {
 async function claimDeposit() {
   try {
     const c = await ensureContract()
-    const operator = await signer.getAddress()
-    const canOperate = await c.isReturnOperator(operator)
+    const canOperate = await checkReturnOperatorAuthorization()
     if (!canOperate) {
-      throw new Error('Connected wallet is not an authorized return operator. Switch to the operator wallet.')
+      throw new Error('Selected wallet is not a an authorized return operator. Switch to an authorized operator wallet.')
     }
 
     const user = document.getElementById('return-address').value.trim()
     if (!ethers.isAddress(user)) {
-      throw new Error('Please enter a valid return address.')
+      throw new Error('Please enter a valid buyer wallet address.')
     }
 
     const items = Object.entries(scanned.return)
@@ -298,6 +440,10 @@ async function claimDeposit() {
     const button = document.getElementById('btn-claim-deposit')
     button.disabled = true
     button.textContent = 'Processing...'
+
+    const receiptItems = []
+    const receiptTxs = []
+    let totalWei = 0n
 
     for (const [barcode, qty] of items) {
       const p = await fetchProductData(barcode)
@@ -312,16 +458,35 @@ async function claimDeposit() {
 
       const tx = await c.returnBottle(user, p.barcodeHash, BigInt(qty))
       await tx.wait()
+
+      const lineWei = p.depositWei * BigInt(qty)
+      receiptItems.push({
+        barcode,
+        qty,
+        depositWei: p.depositWei,
+        lineWei
+      })
+      receiptTxs.push({
+        label: `Return for ${barcode}`,
+        hash: tx.hash
+      })
+      totalWei += lineWei
     }
 
     resetList('return')
-    alert('Refund claimed on-chain.')
+    renderReceipt({
+      title: 'Return receipt',
+      subtitle: `Refund destination: ${user}`,
+      items: receiptItems,
+      totalWei,
+      txs: receiptTxs
+    })
   } catch (e) {
     alert(e.shortMessage || e.message || 'Transaction failed.')
   } finally {
     const button = document.getElementById('btn-claim-deposit')
-    button.disabled = false
     button.textContent = 'Claim my deposit'
+    await checkReturnOperatorAuthorization()
   }
 }
 
@@ -359,6 +524,11 @@ function flashScan(view) {
 
 // ─── Scanner ─────────────────────────────────────────────
 function openScanner(view) {
+  if (!isWalletConnected()) {
+    alert('Please connect your wallet first.')
+    return
+  }
+
   document.getElementById('scanner-' + view).classList.remove('hidden')
   const video = document.getElementById('video-' + view)
   const reader = new ZXing.BrowserMultiFormatReader()
@@ -390,34 +560,77 @@ function closeScanner(view) {
 
 // ─── Navigation ──────────────────────────────────────────
 function switchView(view) {
-  location.hash = view
-  const views = ['home', 'buy', 'return']
-  views.forEach(v => {
-    document.getElementById('view-' + v).classList.toggle('hidden', v !== view)
-    if (v !== view && readers[v]) closeScanner(v)
-  })
+  updateWalletGate()
+  const returnInfo = document.getElementById('return-process-info')
+  if (returnInfo) {
+    returnInfo.classList.toggle('hidden', view !== 'return')
+  }
+
   const btnB = document.getElementById('btn-buy')
   const btnR = document.getElementById('btn-return')
+
+  const setBadgeState = (button, isActive) => {
+    button.classList.remove(
+      'bg-white',
+      'text-green-800',
+      'border-2',
+      'border-white',
+      'text-white',
+      'hover:bg-green-50',
+      'hover:bg-green-700'
+    )
+
+    if (isActive) {
+      button.classList.add('bg-white', 'text-green-800', 'hover:bg-green-50')
+      return
+    }
+
+    button.classList.add('border-2', 'border-white', 'text-white', 'hover:bg-green-700')
+  }
+
+  setBadgeState(btnB, view !== 'return')
+  setBadgeState(btnR, view === 'return')
+
+  if (!isWalletConnected()) {
+    ['buy', 'return', 'receipt'].forEach(v => {
+      document.getElementById('view-' + v).classList.add('hidden')
+      if ((v === 'buy' || v === 'return') && readers[v]) closeScanner(v)
+    })
+
+    if (['buy', 'return', 'receipt'].includes(view) && location.hash !== `#${view}`) {
+      location.hash = view
+    }
+    return
+  }
+
+  ['buy', 'return', 'receipt'].forEach(v => {
+    document.getElementById('view-' + v).classList.toggle('hidden', v !== view)
+    if (v !== view && (v === 'buy' || v === 'return') && readers[v]) closeScanner(v)
+  })
+
+  document.getElementById('view-wallet-required').classList.add('hidden')
+  location.hash = view
+
   if (view === 'buy') {
-    btnB.classList.add('bg-white', 'text-green-800')
-    btnB.classList.remove('border-2', 'border-white', 'text-white')
-    btnR.classList.add('border-2', 'border-white', 'text-white')
-    btnR.classList.remove('bg-white', 'text-green-800')
+    setBadgeState(btnB, true)
+    setBadgeState(btnR, false)
   } else if (view === 'return') {
-    btnR.classList.add('bg-white', 'text-green-800')
-    btnR.classList.remove('border-2', 'border-white', 'text-white')
-    btnB.classList.add('border-2', 'border-white', 'text-white')
-    btnB.classList.remove('bg-white', 'text-green-800')
+    setBadgeState(btnR, true)
+    setBadgeState(btnB, false)
+    void checkReturnOperatorAuthorization()
   }
 }
 
 window.addEventListener('load', () => {
   const hash = location.hash.replace('#', '') || 'buy'
-  switchView(['buy', 'return'].includes(hash) ? hash : 'buy')
+  switchView(['buy', 'return', 'receipt'].includes(hash) ? hash : 'buy')
 
   // Initialize the contract link in the header
   const link = document.getElementById('contract-link')
   link.href = `https://sepolia.etherscan.io/address/${getContractAddress()}`
+
+  void checkReturnOperatorAuthorization()
+  updateWalletGate()
 
   if (window.ethereum) {
     window.ethereum.on('accountsChanged', () => window.location.reload())
