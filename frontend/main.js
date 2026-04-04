@@ -79,11 +79,6 @@ modal.subscribeAccount(async (account) => {
     const short = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`
     setWalletStatus(`Connected: ${short} · ${CONTRACT_ADDRESS.slice(0, 6)}...${CONTRACT_ADDRESS.slice(-4)}`)
 
-    const returnInput = document.getElementById('return-address')
-    if (!returnInput.value) {
-      returnInput.value = connectedAddress
-    }
-
     contract = new ethers.Contract(getContractAddress(), CONTRACT_ABI, signer)
     await refreshAllChainData()
     await checkReturnOperatorAuthorization()
