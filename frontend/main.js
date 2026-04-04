@@ -3,6 +3,7 @@ import { EthersAdapter } from '@reown/appkit-adapter-ethers'
 import { sepolia } from '@reown/appkit/networks'
 import { BrowserMultiFormatReader } from '@zxing/library'
 import { ethers } from 'ethers'
+import { Html5Qrcode } from 'html5-qrcode'
 
 // ─── WalletConnect AppKit ─────────────────────────────────
 const ethersAdapter = new EthersAdapter()
@@ -104,11 +105,6 @@ modal.subscribeAccount(async (account) => {
     const connectedAddress = account.address
 
     setWalletStatus(`Connected: ${connectedAddress}`)
-
-    const returnInput = document.getElementById('return-address')
-    if (!returnInput.value) {
-      returnInput.value = connectedAddress
-    }
 
     contract = new ethers.Contract(getContractAddress(), CONTRACT_ABI, signer)
     await refreshAllChainData()
@@ -747,6 +743,46 @@ window.addEventListener('load', () => {
 })
 
 
+// ─── Wallet QR Scanner ───────────────────────────────────
+let walletScanner = null
+
+function extractEthAddress(text) {
+  if (text.startsWith('0x') && text.length === 42) return text
+  if (text.startsWith('ethereum:')) {
+    const match = text.match(/0x[a-fA-F0-9]{40}/)
+    return match ? match[0] : null
+  }
+  return null
+}
+
+function openWalletScanner() {
+  document.getElementById('wallet-scanner-container').classList.remove('hidden')
+  walletScanner = new Html5Qrcode('scanner-wallet-address')
+  walletScanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: 250 },
+    (decodedText) => {
+      console.log('QR content:', decodedText)
+      const address = extractEthAddress(decodedText)
+      console.log('Wallet address:', address)
+      if (address) {
+        document.getElementById('return-address').value = address
+        closeWalletScanner()
+      }
+    }
+  )
+}
+
+function closeWalletScanner() {
+  if (walletScanner) {
+    walletScanner.stop().then(() => {
+      walletScanner.clear()
+      walletScanner = null
+    })
+  }
+  document.getElementById('wallet-scanner-container').classList.add('hidden')
+}
+
 // ─── Expose to window for inline onclick handlers ────────
 window.switchView = switchView
 window.connectWallet = connectWallet
@@ -758,3 +794,5 @@ window.claimDeposit = claimDeposit
 window.changeQty = changeQty
 window.setQty = setQty
 window.removeItem = removeItem
+window.openWalletScanner = openWalletScanner
+window.closeWalletScanner = closeWalletScanner

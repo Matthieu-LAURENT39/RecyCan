@@ -133,8 +133,20 @@
 
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">Buyer's wallet address</label>
-          <input id="return-address" type="text" placeholder="Buyer wallet (0x...)"
-            class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-700" />
+          <div class="flex gap-2">
+            <input id="return-address" type="text" placeholder="Buyer wallet (0x...)"
+              class="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-700" />
+            <button onclick="openWalletScanner()"
+              class="border border-gray-200 rounded-xl px-3 text-gray-500 hover:border-green-600 hover:text-green-700 transition-colors text-lg">
+              📷
+            </button>
+          </div>
+        </div>
+        <div id="wallet-scanner-container" class="hidden space-y-2">
+          <div id="scanner-wallet-address" class="w-full rounded-xl overflow-hidden"></div>
+          <button onclick="closeWalletScanner()" class="w-full text-xs text-gray-400 hover:text-gray-600 py-1">
+            ✕ Close wallet scanner
+          </button>
         </div>
 
         <div id="return-operator-warning"
