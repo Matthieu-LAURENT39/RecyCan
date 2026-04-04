@@ -1,3 +1,38 @@
+// ─── Mock stats ──────────────────────────────────────────
+const MOCK_STATS = {
+  bottlesSold:     1284,
+  bottlesReturned: 947,
+  ethLocked:       0.107,
+  ethRefunded:     0.079,
+  weeklyReturns:   [40, 60, 75, 55, 90, 70, 35],
+}
+
+function renderCharts() {
+  const ctx = document.getElementById('chart-returns')
+  if (!ctx || ctx._chartInstance) return
+
+  ctx._chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      datasets: [{
+        label: 'Bottles returned',
+        data: MOCK_STATS.weeklyReturns,
+        backgroundColor: '#16a34a',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
+        x: { grid: { display: false } }
+      }
+    }
+  })
+}
+
 // ─── Config ──────────────────────────────────────────────
 const SYMBOL = 'ETH'
 const SCAN_DEBOUNCE_MS = 3000
@@ -391,28 +426,32 @@ function closeScanner(view) {
 // ─── Navigation ──────────────────────────────────────────
 function switchView(view) {
   location.hash = view
-  ['home', 'buy', 'return'].forEach(v => {
-    document.getElementById('view-' + v).classList.toggle('hidden', v !== view)
+  ;['buy', 'return', 'stats'].forEach(v => {
+    const el = document.getElementById('view-' + v)
+    if (el) el.classList.toggle('hidden', v !== view)
     if (v !== view && readers[v]) closeScanner(v)
   })
-  const btnB = document.getElementById('btn-buy')
-  const btnR = document.getElementById('btn-return')
-  if (view === 'buy') {
-    btnB.classList.add('bg-white', 'text-green-800')
-    btnB.classList.remove('border-2', 'border-white', 'text-white')
-    btnR.classList.add('border-2', 'border-white', 'text-white')
-    btnR.classList.remove('bg-white', 'text-green-800')
-  } else if (view === 'return') {
-    btnR.classList.add('bg-white', 'text-green-800')
-    btnR.classList.remove('border-2', 'border-white', 'text-white')
-    btnB.classList.add('border-2', 'border-white', 'text-white')
-    btnB.classList.remove('bg-white', 'text-green-800')
+  const btns = {
+    buy:    document.getElementById('btn-buy'),
+    return: document.getElementById('btn-return'),
+    stats:  document.getElementById('btn-stats'),
   }
+  Object.entries(btns).forEach(([key, btn]) => {
+    if (!btn) return
+    if (key === view) {
+      btn.classList.add('bg-white', 'text-green-800')
+      btn.classList.remove('border-2', 'border-white', 'text-white')
+    } else {
+      btn.classList.remove('bg-white', 'text-green-800')
+      btn.classList.add('border-2', 'border-white', 'text-white')
+    }
+  })
+  if (view === 'stats') renderCharts()
 }
 
 window.addEventListener('load', () => {
   const hash = location.hash.replace('#', '') || 'buy'
-  switchView(['buy', 'return'].includes(hash) ? hash : 'buy')
+  switchView(['buy', 'return', 'stats'].includes(hash) ? hash : 'buy')
 
   // Initialize the contract link in the header
   const link = document.getElementById('contract-link')
