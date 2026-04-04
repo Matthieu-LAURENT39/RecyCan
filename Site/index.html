@@ -85,6 +85,13 @@
   </footer>
 
   <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('qty-buy').value = 1
+      document.getElementById('qty-return').value = 1
+      updateBuy()
+      updateReturn()
+    })
+
     function updateBuy() {
       const qty = BigInt(document.getElementById('qty-buy').value || 0)
       document.getElementById('total-buy').textContent = `${qty * DEPOSIT_PER_BOTTLE} ${SYMBOL}`
