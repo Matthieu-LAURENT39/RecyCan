@@ -17,10 +17,12 @@
       </div>
     </div>
     <nav class="flex gap-3 justify-center">
-      <button class="px-6 py-2 bg-white text-green-800 font-semibold rounded-xl text-sm">
+      <button id="btn-buy" onclick="show('buy')"
+        class="px-6 py-2 bg-white text-green-800 font-semibold rounded-xl text-sm transition-colors hover:bg-green-50">
         🛒 Buy
       </button>
-      <button class="px-6 py-2 border-2 border-white text-white font-semibold rounded-xl text-sm">
+      <button id="btn-return" onclick="show('return')"
+        class="px-6 py-2 border-2 border-white text-white font-semibold rounded-xl text-sm transition-colors hover:bg-green-700">
         ↩️ Return
       </button>
     </nav>
@@ -77,6 +79,27 @@
   <footer class="py-4 text-center text-xs text-gray-300">
     Cannes Recycle · ETHGlobal 2026
   </footer>
+
+  <script>
+    function show(view) {
+      ['home', 'buy', 'return'].forEach(v => {
+        document.getElementById('view-' + v).classList.toggle('hidden', v !== view);
+      });
+      const btnB = document.getElementById('btn-buy');
+      const btnR = document.getElementById('btn-return');
+      if (view === 'buy') {
+        btnB.classList.add('bg-white', 'text-green-800');
+        btnB.classList.remove('border-2', 'border-white', 'text-white');
+        btnR.classList.add('border-2', 'border-white', 'text-white');
+        btnR.classList.remove('bg-white', 'text-green-800');
+      } else if (view === 'return') {
+        btnR.classList.add('bg-white', 'text-green-800');
+        btnR.classList.remove('border-2', 'border-white', 'text-white');
+        btnB.classList.add('border-2', 'border-white', 'text-white');
+        btnB.classList.remove('bg-white', 'text-green-800');
+      }
+    }
+  </script>
 
 </body>
 </html>
