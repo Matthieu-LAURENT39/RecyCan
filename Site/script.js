@@ -1,5 +1,5 @@
 // ─── Config ──────────────────────────────────────────────
-const SYMBOL = 'Wei'
+const SYMBOL = 'ETH'
 const SCAN_DEBOUNCE_MS = 3000
 const CONTRACT_ADDRESS = '0x99fc83461F447D77C0C3d5ddD7eB28336A7Eb06e'
 
@@ -38,6 +38,15 @@ function getContractAddress() {
 
 function setWalletStatus(text) {
   document.getElementById('wallet-status').textContent = text
+}
+
+function WeiToEth(wei) {
+  const eth = ethers.formatEther(wei)
+  const [whole, frac = ''] = eth.split('.')
+  const trimmedFrac = frac.replace(/0+$/, '')
+
+  if (!trimmedFrac) return whole
+  return `${whole}.${trimmedFrac.slice(0, 8)}`
 }
 
 async function connectWallet() {
@@ -133,7 +142,7 @@ function productTag(code) {
   if (!p || p.loading) return '<span class="text-xs text-gray-400">Loading from chain...</span>'
   if (!p.exists) return '<span class="text-xs text-red-500">Unknown product, it is not registered for the deposit program on-chain.</span>'
   if (p.retired) return `<span class="text-xs text-amber-600">The product is retired and no longer eligible for deposit</span>`
-  return `<span class="text-xs text-green-700">Deposit: ${p.depositWei} ${SYMBOL}</span>`
+  return `<span class="text-xs text-green-700">Deposit: ${WeiToEth(p.depositWei)} ${SYMBOL}</span>`
 }
 
 function renderList(view) {
@@ -182,7 +191,7 @@ async function updateTotal(view) {
     total += p.depositWei * BigInt(qty)
   }
 
-  document.getElementById('total-' + view).textContent = `${total} ${SYMBOL}`
+  document.getElementById('total-' + view).textContent = `${WeiToEth(total)} ${SYMBOL}`
 }
 
 // ─── Actions sur la liste ────────────────────────────────
