@@ -12,23 +12,19 @@ function renderCharts() {
   if (!ctx || ctx._chartInstance) return
 
   ctx._chartInstance = new Chart(ctx, {
-    type: 'bar',
+    type: 'doughnut',
     data: {
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      labels: ['Returned', 'In the wild'],
       datasets: [{
-        label: 'Bottles returned',
-        data: MOCK_STATS.weeklyReturns,
-        backgroundColor: '#16a34a',
-        borderRadius: 6,
+        data: [MOCK_STATS.bottlesReturned, MOCK_STATS.bottlesSold - MOCK_STATS.bottlesReturned],
+        backgroundColor: ['#15803d', '#bbf7d0'],
+        borderWidth: 0,
       }]
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
-        x: { grid: { display: false } }
-      }
+      cutout: '70%',
+      plugins: { legend: { display: false } }
     }
   })
 }
