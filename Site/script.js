@@ -1,10 +1,12 @@
 // ─── Config ──────────────────────────────────────────────
 const SYMBOL = 'Wei'
 const SCAN_DEBOUNCE_MS = 3000
-const CONTRACT_ADDRESS = '0x03486454115A0aF6ce0F3DD5dcCd20bF9FEB85fa'
+const CONTRACT_ADDRESS = '0x99fc83461F447D77C0C3d5ddD7eB28336A7Eb06e'
 
 const CONTRACT_ABI = [
   'function products(bytes32) view returns (uint256 depositWei, bool retired)',
+  'function refundableUnits(address, bytes32) view returns (uint256)',
+  'function isReturnOperator(address) view returns (bool)',
   'function buyBottle(bytes32 barcodeHash, uint256 quantity) payable',
   'function returnBottle(address user, bytes32 barcodeHash, uint256 quantity)'
 ]
@@ -51,7 +53,7 @@ async function connectWallet() {
     const connectedAddress = await signer.getAddress()
 
     const short = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`
-    setWalletStatus(`Connected: ${short} · Sepolia · ${CONTRACT_ADDRESS.slice(0, 6)}...${CONTRACT_ADDRESS.slice(-4)}`)
+    setWalletStatus(`Connected: ${short} · ${CONTRACT_ADDRESS.slice(0, 6)}...${CONTRACT_ADDRESS.slice(-4)}`)
 
     const returnInput = document.getElementById('return-address')
     if (!returnInput.value) {
@@ -69,6 +71,9 @@ async function connectWallet() {
 async function ensureContract() {
   if (!signer) {
     await connectWallet()
+  }
+  if (!signer) {
+    throw new Error('Please connect your wallet first.')
   }
 
   const addr = getContractAddress()
@@ -264,6 +269,12 @@ async function confirmPurchase() {
 async function claimDeposit() {
   try {
     const c = await ensureContract()
+    const operator = await signer.getAddress()
+    const canOperate = await c.isReturnOperator(operator)
+    if (!canOperate) {
+      throw new Error('Connected wallet is not an authorized return operator. Switch to the operator wallet.')
+    }
+
     const user = document.getElementById('return-address').value.trim()
     if (!ethers.isAddress(user)) {
       throw new Error('Please enter a valid return address.')
@@ -283,6 +294,11 @@ async function claimDeposit() {
       const p = await fetchProductData(barcode)
       if (!p.exists) {
         throw new Error(`Barcode ${barcode} is not registered in the contract.`)
+      }
+
+      const availableUnits = await c.refundableUnits(user, p.barcodeHash)
+      if (BigInt(availableUnits) < BigInt(qty)) {
+        throw new Error(`Insufficient refundable units for ${barcode}. Available: ${availableUnits}, requested: ${qty}.`)
       }
 
       const tx = await c.returnBottle(user, p.barcodeHash, BigInt(qty))

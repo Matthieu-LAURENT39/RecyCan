@@ -21,6 +21,8 @@ async function main() {
     console.log(`Authorizing machine ${machineAddress}...`);
     const tx = await contract.setReturnOperator(machineAddress, true);
     await tx.wait();
+
+    console.log(`Remember to do export CONTRACT_ADDRESS=${CONTRACT_ADDRESS} in your environment before using the other scripts, and to update the frontend's CONTRACT_ADDRESS constant.`);
 }
 
 

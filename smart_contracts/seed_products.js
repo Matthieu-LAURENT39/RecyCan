@@ -4,7 +4,9 @@ import { network } from "hardhat";
 // These are products available at the bars in the ETHGlobal venue.
 const products = [
     // Badoit 33cl water bottle
-    { barcode: "3068320145105", depositWei: 3n },
+    { barcode: "3068320145105", depositWei: 300000000000000n }, // 0.0003 ETH
+    // Coca-Cola 33cl can
+    { barcode: "5449000214911", depositWei: 200000000000000n }, // 0.0002 ETH
 ];
 
 function hashBarcode(ethers, barcode) {
