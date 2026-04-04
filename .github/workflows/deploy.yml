@@ -3,6 +3,8 @@ name: Deploy to GitHub Pages
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
 
 jobs:
   deploy:
@@ -16,9 +18,20 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # Setup Node.js
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "22"
+      # Install npm dependencies
+      - run: npm ci
+        working-directory: frontend
+      # Build the frontend as a static site
+      - run: npm run build
+        working-directory: frontend
+      # Deploy to GitHub Pages
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: "./frontend/"
+          path: "./frontend/dist/"
       - uses: actions/deploy-pages@v4
         id: deployment
