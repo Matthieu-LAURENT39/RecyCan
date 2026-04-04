@@ -66,7 +66,13 @@
 
         <!-- Liste des produits scannés -->
         <div id="list-buy" class="hidden space-y-2">
-          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Scanned items</p>
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Scanned items</p>
+            <button onclick="resetList('buy')"
+              class="text-xs text-red-400 hover:text-red-600 transition-colors">
+              🗑 Clear all
+            </button>
+          </div>
           <div id="items-buy" class="space-y-2"></div>
         </div>
 
@@ -108,7 +114,13 @@
 
         <!-- Liste des produits scannés -->
         <div id="list-return" class="hidden space-y-2">
-          <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Scanned items</p>
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">Scanned items</p>
+            <button onclick="resetList('return')"
+              class="text-xs text-red-400 hover:text-red-600 transition-colors">
+              🗑 Clear all
+            </button>
+          </div>
           <div id="items-return" class="space-y-2"></div>
         </div>
 
@@ -205,6 +217,11 @@
 
     function removeItem(view, code) {
       delete scanned[view][code]
+      renderList(view)
+    }
+
+    function resetList(view) {
+      scanned[view] = {}
       renderList(view)
     }
 
