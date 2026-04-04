@@ -1,29 +1,155 @@
 // ─── Config ──────────────────────────────────────────────
-const DEPOSIT_PER_BOTTLE = 3n   // Wei
-const SYMBOL             = "Wei"
-const SCAN_DEBOUNCE_MS   = 3000 // ms entre deux scans
+const SYMBOL = 'Wei'
+const SCAN_DEBOUNCE_MS = 3000
+const CONTRACT_ADDRESS = '0x03486454115A0aF6ce0F3DD5dcCd20bF9FEB85fa'
+
+const CONTRACT_ABI = [
+  'function products(bytes32) view returns (uint256 depositWei, bool retired)',
+  'function buyBottle(bytes32 barcodeHash, uint256 quantity) payable',
+  'function returnBottle(address user, bytes32 barcodeHash, uint256 quantity)'
+]
 
 // ─── State ───────────────────────────────────────────────
-const scanned    = { buy: {}, return: {} }
-const readers    = {}
+const scanned = { buy: {}, return: {} }
+const readers = {}
 const scanCooldown = {}
+const productCache = {}
+
+let provider
+let signer
+let contract
+
+// ─── Blockchain ──────────────────────────────────────────
+// Normalizes a barcode by trimming whitespace and removing inner spaces.
+function normalizeBarcode(barcode) {
+  return String(barcode).trim().replace(/\s+/g, '')
+}
+
+// Normalizes and hashes (keccak256) a barcode for on-chain lookup.
+function hashBarcode(barcode) {
+  return ethers.keccak256(ethers.toUtf8Bytes(normalizeBarcode(barcode)))
+}
+
+function getContractAddress() {
+  return CONTRACT_ADDRESS
+}
+
+function setWalletStatus(text) {
+  document.getElementById('wallet-status').textContent = text
+}
+
+async function connectWallet() {
+  try {
+    if (!window.ethereum) {
+      alert('No wallet found. Please install MetaMask.')
+      return
+    }
+
+    provider = new ethers.BrowserProvider(window.ethereum)
+    await provider.send('eth_requestAccounts', [])
+    signer = await provider.getSigner()
+    const connectedAddress = await signer.getAddress()
+
+    const short = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`
+    setWalletStatus(`Connected: ${short} · Sepolia · ${CONTRACT_ADDRESS.slice(0, 6)}...${CONTRACT_ADDRESS.slice(-4)}`)
+
+    const returnInput = document.getElementById('return-address')
+    if (!returnInput.value) {
+      returnInput.value = connectedAddress
+    }
+
+    const addr = getContractAddress()
+    contract = new ethers.Contract(addr, CONTRACT_ABI, signer)
+    await refreshAllChainData()
+  } catch (e) {
+    alert(e.shortMessage || e.message || 'Wallet connection failed.')
+  }
+}
+
+async function ensureContract() {
+  if (!signer) {
+    await connectWallet()
+  }
+
+  const addr = getContractAddress()
+  if (!ethers.isAddress(addr)) {
+    throw new Error('Invalid contract address. Please report this to the dev team.')
+  }
+
+  if (!contract || contract.target.toLowerCase() !== addr.toLowerCase()) {
+    contract = new ethers.Contract(addr, CONTRACT_ABI, signer)
+  }
+
+  return contract
+}
+
+async function fetchProductData(barcode) {
+  const current = productCache[barcode]
+  if (current && !current.loading) {
+    return current
+  }
+
+  if (!contract) {
+    return { exists: false, retired: false, depositWei: 0n, loading: false }
+  }
+
+  productCache[barcode] = { exists: false, retired: false, depositWei: 0n, loading: true }
+
+  try {
+    const barcodeHash = hashBarcode(barcode)
+    const product = await contract.products(barcodeHash)
+    const depositWei = BigInt(product.depositWei)
+    const exists = depositWei > 0n
+
+    productCache[barcode] = {
+      exists,
+      retired: Boolean(product.retired),
+      depositWei,
+      barcodeHash,
+      loading: false
+    }
+  } catch (e) {
+    productCache[barcode] = { exists: false, retired: false, depositWei: 0n, loading: false }
+  }
+
+  return productCache[barcode]
+}
+
+async function refreshAllChainData() {
+  const allCodes = [...Object.keys(scanned.buy), ...Object.keys(scanned.return)]
+  await Promise.all(allCodes.map(code => fetchProductData(code)))
+  renderList('buy')
+  renderList('return')
+}
 
 // ─── Rendu de la liste ───────────────────────────────────
+function productTag(code) {
+  const p = productCache[code]
+  if (!p || p.loading) return '<span class="text-xs text-gray-400">Loading from chain...</span>'
+  if (!p.exists) return '<span class="text-xs text-red-500">Unknown product, it is not registered for the deposit program on-chain.</span>'
+  if (p.retired) return `<span class="text-xs text-amber-600">The product is retired and no longer eligible for deposit</span>`
+  return `<span class="text-xs text-green-700">Deposit: ${p.depositWei} ${SYMBOL}</span>`
+}
+
 function renderList(view) {
-  const items     = scanned[view]
+  const items = scanned[view]
   const container = document.getElementById('items-' + view)
-  const list      = document.getElementById('list-' + view)
-  const barcodes  = Object.keys(items)
+  const list = document.getElementById('list-' + view)
+  const barcodes = Object.keys(items)
 
   if (barcodes.length === 0) {
     list.classList.add('hidden')
+    document.getElementById('total-' + view).textContent = `0 ${SYMBOL}`
     return
   }
   list.classList.remove('hidden')
 
   container.innerHTML = barcodes.map(code => `
     <div class="flex items-center justify-between border border-gray-100 rounded-xl px-3 py-2 text-sm">
-      <span class="font-mono text-gray-600 truncate max-w-[180px]">${code}</span>
+      <div class="min-w-0">
+        <span class="font-mono text-gray-600 truncate max-w-[180px] block">${code}</span>
+        ${productTag(code)}
+      </div>
       <div class="flex items-center gap-2 shrink-0">
         <button onclick="changeQty('${view}', '${code}', -1)"
           class="w-6 h-6 rounded-lg border border-gray-200 text-gray-500 hover:border-green-600 hover:text-green-700 flex items-center justify-center text-base leading-none">−</button>
@@ -38,12 +164,19 @@ function renderList(view) {
     </div>
   `).join('')
 
-  updateTotal(view)
+  void updateTotal(view)
 }
 
-function updateTotal(view) {
+async function updateTotal(view) {
   const items = scanned[view]
-  const total = Object.values(items).reduce((sum, qty) => sum + BigInt(qty), 0n) * DEPOSIT_PER_BOTTLE
+  let total = 0n
+
+  for (const [code, qty] of Object.entries(items)) {
+    const p = await fetchProductData(code)
+    if (!p.exists) continue
+    total += p.depositWei * BigInt(qty)
+  }
+
   document.getElementById('total-' + view).textContent = `${total} ${SYMBOL}`
 }
 
@@ -79,17 +212,98 @@ function resetList(view) {
 }
 
 function addScan(view, code) {
-  scanned[view][code] = (scanned[view][code] || 0) + 1
-  document.getElementById('last-scan-' + view).textContent = code
+  const normalized = normalizeBarcode(code)
+  if (!normalized) return
+
+  scanned[view][normalized] = (scanned[view][normalized] || 0) + 1
+  document.getElementById('last-scan-' + view).textContent = normalized
   beep()
   flashScan(view)
+  void fetchProductData(normalized).then(() => renderList(view))
   renderList(view)
+}
+
+async function confirmPurchase() {
+  try {
+    const c = await ensureContract()
+    const items = Object.entries(scanned.buy)
+    if (items.length === 0) {
+      alert('Scan at least one product before confirming purchase.')
+      return
+    }
+
+    const button = document.getElementById('btn-confirm-purchase')
+    button.disabled = true
+    button.textContent = 'Processing...'
+
+    for (const [barcode, qty] of items) {
+      const p = await fetchProductData(barcode)
+      if (!p.exists) {
+        throw new Error(`Barcode ${barcode} is not registered in the contract.`)
+      }
+      if (p.retired) {
+        throw new Error(`Barcode ${barcode} is retired and cannot be bought.`)
+      }
+
+      const value = p.depositWei * BigInt(qty)
+      const tx = await c.buyBottle(p.barcodeHash, BigInt(qty), { value })
+      await tx.wait()
+    }
+
+    resetList('buy')
+    alert('Purchase confirmed on-chain.')
+  } catch (e) {
+    alert(e.shortMessage || e.message || 'Transaction failed.')
+  } finally {
+    const button = document.getElementById('btn-confirm-purchase')
+    button.disabled = false
+    button.textContent = 'Confirm purchase'
+  }
+}
+
+async function claimDeposit() {
+  try {
+    const c = await ensureContract()
+    const user = document.getElementById('return-address').value.trim()
+    if (!ethers.isAddress(user)) {
+      throw new Error('Please enter a valid return address.')
+    }
+
+    const items = Object.entries(scanned.return)
+    if (items.length === 0) {
+      alert('Scan at least one product before claiming a refund.')
+      return
+    }
+
+    const button = document.getElementById('btn-claim-deposit')
+    button.disabled = true
+    button.textContent = 'Processing...'
+
+    for (const [barcode, qty] of items) {
+      const p = await fetchProductData(barcode)
+      if (!p.exists) {
+        throw new Error(`Barcode ${barcode} is not registered in the contract.`)
+      }
+
+      const tx = await c.returnBottle(user, p.barcodeHash, BigInt(qty))
+      await tx.wait()
+    }
+
+    resetList('return')
+    alert('Refund claimed on-chain.')
+  } catch (e) {
+    alert(e.shortMessage || e.message || 'Transaction failed.')
+  } finally {
+    const button = document.getElementById('btn-claim-deposit')
+    button.disabled = false
+    button.textContent = 'Claim my deposit'
+  }
 }
 
 // ─── Audio ───────────────────────────────────────────────
 function beep() {
-  const ctx  = new AudioContext()
-  const osc  = ctx.createOscillator()
+  const ctx = new AudioContext()
+  const osc = ctx.createOscillator()
   const gain = ctx.createGain()
   osc.connect(gain)
   gain.connect(ctx.destination)
@@ -121,18 +335,20 @@ function flashScan(view) {
 // ─── Scanner ─────────────────────────────────────────────
 function openScanner(view) {
   document.getElementById('scanner-' + view).classList.remove('hidden')
-  const video  = document.getElementById('video-' + view)
+  const video = document.getElementById('video-' + view)
   const reader = new ZXing.BrowserMultiFormatReader()
   readers[view] = reader
 
   reader.decodeFromConstraints(
     { video: { facingMode: 'environment' } },
     video,
-    (result, err) => {
+    result => {
       if (result && !scanCooldown[view]) {
         scanCooldown[view] = true
         addScan(view, result.getText())
-        setTimeout(() => { scanCooldown[view] = false }, SCAN_DEBOUNCE_MS)
+        setTimeout(() => {
+          scanCooldown[view] = false
+        }, SCAN_DEBOUNCE_MS)
       }
     }
   )
@@ -167,3 +383,10 @@ function switchView(view) {
     btnB.classList.remove('bg-white', 'text-green-800')
   }
 }
+
+window.addEventListener('load', () => {
+  if (window.ethereum) {
+    window.ethereum.on('accountsChanged', () => window.location.reload())
+    window.ethereum.on('chainChanged', () => window.location.reload())
+  }
+})
