@@ -43,6 +43,20 @@
   <main class="flex-1 flex items-center justify-center px-6 py-8">
     <div class="w-full max-w-lg">
 
+      <div id="return-process-info"
+        class="hidden mb-4 border border-blue-200 bg-blue-50 text-blue-900 rounded-xl px-4 py-3 text-sm">
+        <p class="font-semibold">About the return process</p>
+        <p>
+          In a real deployment, the whole return flow would be handled by a specialized return machine.<br>
+          The user would place the bottle in the machine in a way where the user can no longer retrieve it. It would
+          then scan the barcode, and validate that the product is a match (correct weight and/or dimensions),
+          before finally authorizing the refund. This is similar to how existing collection sheme machines work.<br>
+          Only the address associated with those machines would be marked as "authorized" to process returns in the
+          smart contract, and would be the only ones able to trigger refunds.<br>
+          For demo purposes, this whole process is simulated by this web interface.
+        </p>
+      </div>
+
       <div class="mb-4 border border-gray-200 rounded-2xl p-4 space-y-3 bg-white">
         <div class="flex items-center justify-between gap-3">
           <p id="wallet-status" class="text-xs text-gray-500 truncate">Wallet not connected</p>

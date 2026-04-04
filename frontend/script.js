@@ -561,6 +561,10 @@ function closeScanner(view) {
 // ─── Navigation ──────────────────────────────────────────
 function switchView(view) {
   updateWalletGate()
+  const returnInfo = document.getElementById('return-process-info')
+  if (returnInfo) {
+    returnInfo.classList.toggle('hidden', view !== 'return')
+  }
 
   const btnB = document.getElementById('btn-buy')
   const btnR = document.getElementById('btn-return')
