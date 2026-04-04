@@ -422,6 +422,11 @@ function addScan(view, code) {
   const normalized = normalizeBarcode(code)
   if (!normalized) return
 
+  if (!isValidEAN13(normalized)) {
+    document.getElementById('last-scan-' + view).textContent = `Invalid barcode: ${normalized}`
+    return
+  }
+
   scanned[view][normalized] = (scanned[view][normalized] || 0) + 1
   document.getElementById('last-scan-' + view).textContent = normalized
   beep()
@@ -595,6 +600,15 @@ function flashScan(view) {
   }, 1200)
 }
 
+// ─── Barcode validation ──────────────────────────────────
+function isValidEAN13(code) {
+  if (!/^\d{13}$/.test(code)) return false
+  const digits = code.split('').map(Number)
+  const sum = digits.slice(0, 12).reduce((acc, d, i) => acc + d * (i % 2 === 0 ? 1 : 3), 0)
+  const checkDigit = (10 - (sum % 10)) % 10
+  return checkDigit === digits[12]
+}
+
 // ─── Scanner ─────────────────────────────────────────────
 function openScanner(view) {
   if (!isWalletConnected()) {
@@ -762,9 +776,7 @@ function openWalletScanner() {
     { facingMode: 'environment' },
     { fps: 10, qrbox: 250 },
     (decodedText) => {
-      console.log('QR content:', decodedText)
       const address = extractEthAddress(decodedText)
-      console.log('Wallet address:', address)
       if (address) {
         document.getElementById('return-address').value = address
         closeWalletScanner()
