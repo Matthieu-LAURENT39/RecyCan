@@ -390,6 +390,7 @@ function closeScanner(view) {
 
 // ─── Navigation ──────────────────────────────────────────
 function switchView(view) {
+  location.hash = view
   ['home', 'buy', 'return'].forEach(v => {
     document.getElementById('view-' + v).classList.toggle('hidden', v !== view)
     if (v !== view && readers[v]) closeScanner(v)
@@ -410,6 +411,9 @@ function switchView(view) {
 }
 
 window.addEventListener('load', () => {
+  const hash = location.hash.replace('#', '') || 'buy'
+  switchView(['buy', 'return'].includes(hash) ? hash : 'buy')
+
   // Initialize the contract link in the header
   const link = document.getElementById('contract-link')
   link.href = `https://sepolia.etherscan.io/address/${getContractAddress()}`
