@@ -1,5 +1,24 @@
 import { ethers } from 'ethers'
 import { BrowserMultiFormatReader } from '@zxing/library'
+import { createAppKit } from '@reown/appkit'
+import { EthersAdapter } from '@reown/appkit-adapter-ethers'
+import { sepolia } from '@reown/appkit/networks'
+
+// ─── WalletConnect AppKit ─────────────────────────────────
+const ethersAdapter = new EthersAdapter()
+
+const modal = createAppKit({
+  adapters: [ethersAdapter],
+  networks: [sepolia],
+  projectId: '9dbab415b64ada5648b3f0fff195598b',
+  metadata: {
+    name: 'Cannes Recycle',
+    description: 'Bottle deposit dApp',
+    url: window.location.origin,
+    icons: ["https://avatars.githubusercontent.com/u/179229932"]
+  },
+  features: { analytics: true }
+})
 
 // ─── Config ──────────────────────────────────────────────
 const SYMBOL = 'ETH'
@@ -23,6 +42,32 @@ const productCache = {}
 let provider
 let signer
 let contract
+
+modal.subscribeAccount(async (account) => {
+  if (account.isConnected && account.address) {
+    const walletProvider = modal.getWalletProvider()
+    provider = new ethers.BrowserProvider(walletProvider)
+    signer = await provider.getSigner()
+    const connectedAddress = account.address
+
+    const short = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`
+    setWalletStatus(`Connected: ${short} · ${CONTRACT_ADDRESS.slice(0, 6)}...${CONTRACT_ADDRESS.slice(-4)}`)
+
+    const returnInput = document.getElementById('return-address')
+    if (!returnInput.value) {
+      returnInput.value = connectedAddress
+    }
+
+    const addr = getContractAddress()
+    contract = new ethers.Contract(addr, CONTRACT_ABI, signer)
+    await refreshAllChainData()
+  } else {
+    provider = undefined
+    signer = undefined
+    contract = undefined
+    setWalletStatus('Wallet not connected')
+  }
+})
 
 // ─── Blockchain ──────────────────────────────────────────
 // Normalizes a barcode by trimming whitespace and removing inner spaces.
@@ -54,27 +99,7 @@ function WeiToEth(wei) {
 
 async function connectWallet() {
   try {
-    if (!window.ethereum) {
-      alert('No wallet found. Please install MetaMask.')
-      return
-    }
-
-    provider = new ethers.BrowserProvider(window.ethereum)
-    await provider.send('eth_requestAccounts', [])
-    signer = await provider.getSigner()
-    const connectedAddress = await signer.getAddress()
-
-    const short = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`
-    setWalletStatus(`Connected: ${short} · ${CONTRACT_ADDRESS.slice(0, 6)}...${CONTRACT_ADDRESS.slice(-4)}`)
-
-    const returnInput = document.getElementById('return-address')
-    if (!returnInput.value) {
-      returnInput.value = connectedAddress
-    }
-
-    const addr = getContractAddress()
-    contract = new ethers.Contract(addr, CONTRACT_ABI, signer)
-    await refreshAllChainData()
+    await modal.open()
   } catch (e) {
     alert(e.shortMessage || e.message || 'Wallet connection failed.')
   }
@@ -85,7 +110,7 @@ async function ensureContract() {
     await connectWallet()
   }
   if (!signer) {
-    throw new Error('Please connect your wallet first.')
+    throw new Error('Please connect your wallet first, then try again.')
   }
 
   const addr = getContractAddress()
@@ -422,11 +447,10 @@ window.addEventListener('load', () => {
   const link = document.getElementById('contract-link')
   link.href = `https://sepolia.etherscan.io/address/${getContractAddress()}`
 
-  if (window.ethereum) {
+if (window.ethereum) {
     window.ethereum.on('accountsChanged', () => window.location.reload())
     window.ethereum.on('chainChanged', () => window.location.reload())
-  }
-})
+  }})
 
 // ─── Expose to window for inline onclick handlers ────────
 window.switchView = switchView
