@@ -87,7 +87,7 @@ modal.subscribeAccount(async (account) => {
     contract = new ethers.Contract(getContractAddress(), CONTRACT_ABI, signer)
     await refreshAllChainData()
     await checkReturnOperatorAuthorization()
-    updateWalletGate()
+    //updateWalletGate()
 
     const hash = location.hash.replace('#', '')
     switchView(['buy', 'return', 'receipt'].includes(hash) ? hash : 'buy')
@@ -96,7 +96,7 @@ modal.subscribeAccount(async (account) => {
     signer = undefined
     contract = undefined
     setWalletStatus('Wallet not connected')
-    updateWalletGate()
+    //updateWalletGate()
     switchView(location.hash.replace('#', '') || 'buy')
   }
 })
@@ -420,6 +420,11 @@ async function confirmPurchase() {
     const button = document.getElementById('btn-confirm-purchase')
     button.disabled = true
     button.textContent = 'Processing...'
+
+
+    const receiptItems = []
+    const receiptTxs = []
+    let totalWei = 0n
 
     for (const [barcode, qty] of items) {
       const p = await fetchProductData(barcode)
