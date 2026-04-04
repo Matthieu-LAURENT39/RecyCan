@@ -391,7 +391,8 @@ function closeScanner(view) {
 // ─── Navigation ──────────────────────────────────────────
 function switchView(view) {
   location.hash = view
-  ['home', 'buy', 'return'].forEach(v => {
+  const views = ['home', 'buy', 'return']
+  views.forEach(v => {
     document.getElementById('view-' + v).classList.toggle('hidden', v !== view)
     if (v !== view && readers[v]) closeScanner(v)
   })
