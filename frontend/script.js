@@ -674,6 +674,17 @@ function switchView(view) {
     setBadgeState(btnB, false)
     void checkReturnOperatorAuthorization()
   }
+  Object.entries(btns).forEach(([key, btn]) => {
+    if (!btn) return
+    if (key === view) {
+      btn.classList.add('bg-white', 'text-green-800')
+      btn.classList.remove('border-2', 'border-white', 'text-white')
+    } else {
+      btn.classList.remove('bg-white', 'text-green-800')
+      btn.classList.add('border-2', 'border-white', 'text-white')
+    }
+  })
+  if (view === 'stats') renderCharts()
 }
 
 window.addEventListener('load', () => {
