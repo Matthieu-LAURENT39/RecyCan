@@ -410,6 +410,10 @@ function switchView(view) {
 }
 
 window.addEventListener('load', () => {
+  // Initialize the contract link in the header
+  const link = document.getElementById('contract-link')
+  link.href = `https://sepolia.etherscan.io/address/${getContractAddress()}`
+
   if (window.ethereum) {
     window.ethereum.on('accountsChanged', () => window.location.reload())
     window.ethereum.on('chainChanged', () => window.location.reload())
