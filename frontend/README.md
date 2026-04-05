@@ -53,3 +53,5 @@ Features:
 - Web2 onboarding: users can sign in using email or social accounts like X, Discord... (handly in real life environment).
 - Automatic wallet creation: lowers the barrier to entry for non-crypto users (perfect to have new users in a large use case).
 - SIWX (Sign In With X): a unified authentication layer bridging Web2 and Web3 identities.
+
+Our project is focused on reducing user friction, and WalletConnect is key to making that possible. It enables a simple and intuitive QR code connection flow, perfectly suited for real-world interfaces like self-checkout or recycling machines. At the same time, it supports a wide range of wallets, making the solution scalable without locking users into a specific ecosystem. With Reown Auth, even non-crypto users can easily onboard using familiar methods like email or social login. Overall, it allows seamless integration into existing infrastructure while keeping the experience accessible and user-friendly.
