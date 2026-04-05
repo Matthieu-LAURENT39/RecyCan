@@ -27,8 +27,8 @@ const modal = createAppKit({
   networks: [sepolia],
   projectId: 'd4cf487a7a6e15c267de764e4f3e5635',
   metadata: {
-    name: 'Cannes Recycle',
-    description: 'Bottle deposit dApp',
+    name: 'RecyCan',
+    description: 'You Cannes Recycle It!',
     url: window.location.origin,
     icons: ["https://avatars.githubusercontent.com/u/179229932"]
   },
@@ -185,7 +185,7 @@ function renderReceipt({ title, subtitle, items, totalWei, txHash }) {
     <a href="${getTxExplorerUrl(txHash)}" target="_blank" rel="noopener noreferrer"
       class="block border border-gray-100 rounded-xl px-3 py-2 hover:border-green-300 hover:bg-green-50 transition-colors">
       <div class="flex items-center justify-between gap-3 text-sm">
-        <span class="text-gray-700">Transaction</span>
+        <span class="text-gray-700">View transaction</span>
         <span class="font-mono text-[11px] text-green-700 truncate max-w-[180px]">${txHash}</span>
       </div>
     </a>
