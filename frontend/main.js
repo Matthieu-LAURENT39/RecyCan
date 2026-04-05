@@ -27,8 +27,8 @@ const modal = createAppKit({
   networks: [sepolia],
   projectId: 'd4cf487a7a6e15c267de764e4f3e5635',
   metadata: {
-    name: 'Cannes Recycle',
-    description: 'Bottle deposit dApp',
+    name: 'RecyCan',
+    description: 'You Cannes Recycle It!',
     url: window.location.origin,
     icons: ["https://avatars.githubusercontent.com/u/179229932"]
   },
