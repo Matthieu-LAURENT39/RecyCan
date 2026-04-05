@@ -24,12 +24,12 @@ No more paper coupons or locked value
 The project demonstrates how blockchain can be integrated into real-world systems like cashier terminals and return machines using simple technologies such as QR codes and barcode scanning.
 
 ## Features
-- 💳 Wallet-based deposit payments
-- 🔄 Instant on-chain refunds for returned bottles
-- 📷 Camera-based barcode scanning (mocked cashier & return operating machines)
-- 🔗 QR code wallet identification
-- 📊 Statistics dashboard (bottles sold, returned, deposits, etc.)
-- 🔐 Transparent and verifiable data via blockchain
+- Wallet-based deposit payments
+- Instant on-chain refunds for returned bottles
+- Camera-based barcode scanning (mocked cashier & return operating machines)
+- QR code wallet identification
+- Statistics dashboard (bottles sold, returned, deposits, etc.)
+- Transparent and verifiable data via blockchain
 
 ## Use case
 The following sequence diagrams illustrate the two main user flows of the application: purchasing a cans / bottles (buy) and returning it to reclaim the deposit.
